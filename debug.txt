@@ -1,0 +1,6 @@
+2026-08-10T18:56:57.873Z
+Error: HTTP 403 for https://toulouse.concerts-metal.com/ — body: <!DOCTYPE html><html lang="en-US"><head><title>Just a moment...</title><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=Edge"><meta name="robots" content="noindex,nofollow"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="content-security-policy" content="default-src &#39;none&#39;; script-src &#39;nonce-tLHLHtojCOSj0fGniljkdd&#39; &#39;unsafe-eval&#39; https://challenges.cloudflare.com; script-s
+    at fetchText (/home/runner/work/concerts/concerts/index.js:68:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async fetchConcertsMetalToulouse (/home/runner/work/concerts/concerts/index.js:128:16)
+    at async /home/runner/work/concerts/concerts/index.js:189:17
