@@ -26,6 +26,8 @@ jobs:
           if git rev-parse --verify origin/gh-pages >/dev/null 2>&1; then
             git archive origin/gh-pages -- history.json 2>/dev/null | tar -x -C dist 2>/dev/null || true
           fi
+      - name: Install dependencies
+        run: npm ci
       - name: Build
         run: node index.js
       - name: Deploy 🚀

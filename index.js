@@ -1,5 +1,6 @@
 const fs = require('fs');
 const crypto = require('crypto');
+const he = require('he');
 const templates = require('./templates.js');
 
 const EVENTS_DIR = './dist/concerts';
@@ -28,9 +29,7 @@ function createFile(fileName, data) {
 
 // dist/history.json is seeded by the GitHub Actions workflow from the
 // previously deployed gh-pages before this script runs, so events survive
-// in the "Historique" listing even after they fall out of the live source
-// (concerts-metal.com only ever lists what's ahead — there's no "past
-// events" page there, so our own persisted history *is* the archive).
+// in the "Historique" listing even after the source stops listing them.
 function loadState() {
   try {
     const raw = JSON.parse(fs.readFileSync(HISTORY_FILE, 'utf-8'));
@@ -48,13 +47,12 @@ function todayISO() {
   return new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' }); // sv-SE => YYYY-MM-DD
 }
 
-const ENTITY_MAP = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
-function decodeEntities(str) {
-  if (!str) return '';
+function normalizeForKey(str) {
   return String(str)
-    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)))
-    .replace(/&(amp|lt|gt|quot|apos|nbsp);/g, (_, name) => ENTITY_MAP[name])
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
     .trim();
 }
 
@@ -64,79 +62,120 @@ async function fetchText(url) {
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
   if (!res.ok) {
-    const snippet = (await res.text().catch(() => '')).slice(0, 500);
+    const snippet = (await res.text().catch(() => '')).slice(0, 300);
     throw new Error(`HTTP ${res.status} for ${url} — body: ${snippet}`);
   }
   return res.text();
 }
 
-// Source: toulouse.concerts-metal.com — the city-subdomain of
-// concerts-metal.com (same publisher as the FR-N__Midi_Pyrenees page, whose
-// path-based URL sits behind a Cloudflare Turnstile captcha and can't be
-// scraped). The subdomain isn't behind that same challenge and embeds each
-// show as schema.org MusicEvent microdata: venue, date, band lineup with
-// genre tags, and ticket/Facebook links — no headless browser needed.
-const EVENT_BLOCK_SPLIT = '<div itemscope itemtype="https://schema.org/MusicEvent">';
-
-function extractTicketUrl(hrefs, exclude) {
-  const raw = hrefs.find((h) => !exclude.includes(h));
-  if (!raw) return null;
+function extractTicketUrl(rawUrl) {
+  if (!rawUrl) return null;
   try {
-    const redir = new URL(raw).searchParams.get('redir');
-    return redir ? decodeURIComponent(redir) : raw;
+    const redir = new URL(rawUrl).searchParams.get('redir');
+    return redir ? decodeURIComponent(redir) : rawUrl;
   } catch {
-    return raw;
+    return rawUrl;
   }
 }
 
-function parseConcertsMetalBlock(block) {
-  const names = [...block.matchAll(/<meta itemprop="name" content="([^"]*)"/g)].map((m) => decodeEntities(m[1]));
-  const commune = block.match(/<meta itemprop="addressLocality" content="([^"]*)"/);
-  const dateStart = block.match(/<meta itemprop="startDate" content="([^"]*)"/);
-  const dateEnd = block.match(/<meta itemprop="endDate" content="([^"]*)"/);
-  if (!names.length || !dateStart) return null;
+function formatPrice(offers, isFree) {
+  if (isFree) return 'Gratuit';
+  const o = Array.isArray(offers) ? offers[0] : offers;
+  if (!o) return null;
+  if (o.lowPrice && o.highPrice && o.lowPrice !== o.highPrice) return `${o.lowPrice} – ${o.highPrice} €`;
+  if (o.lowPrice) return `${o.lowPrice} €`;
+  if (o.price) return `${o.price} €`;
+  return null;
+}
 
-  const bands = [...block.matchAll(/<b>([^<]*)<\/b>\s*<i>([^<]*)<\/i>/g)]
-    .map((m) => ({ name: decodeEntities(m[1]), genre: decodeEntities(m[2]) }));
-  const genres = [...new Set(bands.map((b) => b.genre).filter(Boolean))];
+// Source: JDS.fr's "Rock" listing for Toulouse. Chosen over
+// concerts-metal.com (which is exactly on-genre but sits behind Cloudflare
+// on its main domain, and its city-subdomain — clean, unprotected, and
+// scrapable from a normal machine — turned out to still be blocked from
+// GitHub Actions runners specifically: Cloudflare's bot scoring flags the
+// well-known GitHub-hosted-runner IP ranges regardless of headers). JDS.fr
+// is plain nginx/PHP, robots.txt allows it, and each listing embeds a full
+// schema.org MusicEvent as JSON-LD — venue, address, geo, lineup, price,
+// ticket link. "Rock" isn't metal-exclusive (it also carries blues, tribute
+// bands, arena pop-rock), so results are filtered through a metal/hardcore/
+// punk keyword match afterwards.
+const JDS_ROCK_URL = 'https://www.jds.fr/toulouse/agenda/rock-111_B';
+const MAX_PAGES = 6;
 
-  const hrefs = [...block.matchAll(/href="([^"]*)"/g)].map((m) => m[1]);
-  const facebookUrl = hrefs.find((h) => h.includes('facebook.com')) || null;
-  const detailUrl = hrefs.find((h) => h.includes('concerts-metal.com/concert')) || null;
-  const ticketUrl = extractTicketUrl(hrefs, [facebookUrl, detailUrl].filter(Boolean));
+const METAL_RE = /\bmetal\b|hardcore|punk|thrash|deathcore|metalcore|grindcore|\bdoom\b|\bgrind\b|\bstoner\b|\bsludge\b|black.?metal|death.?metal|power.?metal|folk.?metal|gothic.?metal|nu.?metal|hard.?rock/i;
 
-  const venue = names[0];
-  const title = bands.length ? bands.map((b) => b.name).join(' + ') : (names[1] || names[0]);
+function looksLikeMetal(text) {
+  return METAL_RE.test(text);
+}
+
+function parseJdsEvent(it) {
+  if (!it || it['@type'] !== 'MusicEvent' || !it.startDate) return null;
+  const title = he.decode(it.name || '');
+  const performer = Array.isArray(it.performer) ? it.performer : (it.performer ? [it.performer] : []);
+  const bands = performer.filter((p) => p && p.name).map((p) => ({ name: he.decode(p.name) }));
+  const description = he.decode(it.description || '').trim();
+
+  const matchText = `${title} ${description} ${bands.map((b) => b.name).join(' ')}`;
+  if (!looksLikeMetal(matchText)) return null;
+
+  const location = it.location || {};
+  const addr = location.address || {};
+  const geo = location.geo || {};
+  const venue = he.decode(location.name || '');
+  const commune = he.decode(addr.addressLocality || '');
+  const streetAddress = he.decode(addr.streetAddress || '');
+  const address = [streetAddress, [addr.postalCode, commune].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+
+  const dateStart = (it.startDate || '').slice(0, 10);
+  const dateEnd = (it.endDate || it.startDate || '').slice(0, 10) || dateStart;
+
+  const offer = Array.isArray(it.offers) ? it.offers[0] : it.offers;
 
   return {
-    id: `cm:${[dateStart[1], venue, bands.map((b) => b.name).join(',') || title].join('|').toLowerCase()}`,
+    id: `jds:${normalizeForKey([dateStart, venue, title].join('|'))}`,
     title,
     bands,
-    genres,
+    description,
     venue,
-    commune: commune ? commune[1] : '',
-    dateStart: dateStart[1],
-    dateEnd: dateEnd ? dateEnd[1] : dateStart[1],
-    url: detailUrl,
-    ticketUrl,
-    facebookUrl,
-    source: 'Concerts-Metal.com',
+    commune,
+    address,
+    lat: typeof geo.latitude === 'number' ? geo.latitude : null,
+    lon: typeof geo.longitude === 'number' ? geo.longitude : null,
+    dateStart,
+    dateEnd,
+    price: formatPrice(it.offers, it.isAccessibleForFree),
+    ticketUrl: offer ? extractTicketUrl(offer.url) : null,
+    url: it.url || null,
+    source: 'JDS.fr',
   };
 }
 
-async function fetchConcertsMetalToulouse() {
-  const html = await fetchText('https://toulouse.concerts-metal.com/');
-  const blocks = html.split(EVENT_BLOCK_SPLIT).slice(1);
+async function fetchJdsRock() {
   const events = [];
   const seenIds = new Set();
-  for (const block of blocks) {
-    const ev = parseConcertsMetalBlock(block);
-    // The source itself sometimes double-lists a show (once from its own
-    // agenda, once cross-posted from Facebook) — same venue/date/lineup,
-    // different blurb. Our id is built from exactly those fields.
-    if (!ev || seenIds.has(ev.id)) continue;
-    seenIds.add(ev.id);
-    events.push(ev);
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    const url = page === 1 ? JDS_ROCK_URL : `${JDS_ROCK_URL}?page=${page}`;
+    const html = await fetchText(url);
+    const scripts = [...html.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/gs)].map((m) => m[1]);
+    let pageEventCount = 0;
+    for (const raw of scripts) {
+      let data;
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        continue;
+      }
+      const items = Array.isArray(data) ? data : [data];
+      for (const it of items) {
+        if (!it || it['@type'] !== 'MusicEvent') continue;
+        pageEventCount++;
+        const ev = parseJdsEvent(it);
+        if (!ev || seenIds.has(ev.id)) continue;
+        seenIds.add(ev.id);
+        events.push(ev);
+      }
+    }
+    if (pageEventCount === 0) break;
   }
   return events;
 }
@@ -186,32 +225,29 @@ function paginationNav(pageNum, totalPages, slug) {
 (async () => {
   const state = loadState();
 
-  const fresh = await fetchConcertsMetalToulouse().catch((err) => {
-    console.warn(`concerts-metal.com fetch failed: ${err.message}`);
+  const fresh = await fetchJdsRock().catch((err) => {
+    console.warn(`JDS.fr fetch failed: ${err.message}`);
     createFile('./dist/debug.txt', `${new Date().toISOString()}\n${err.stack || err.message}\n`);
     return [];
   });
-  console.log(`Fetched ${fresh.length} concerts from toulouse.concerts-metal.com.`);
+  console.log(`Fetched ${fresh.length} metal/hardcore/punk concerts from JDS.fr.`);
 
   // Merge into persisted history: upsert by id so events survive even after
-  // concerts-metal.com's own rolling agenda stops listing them. Drop any
-  // history from a previous source generation (ids not prefixed "cm:") —
-  // this repo briefly ran on generic open-data listings before switching
-  // to concerts-metal.com, and those weren't metal shows.
-  const events = Object.fromEntries(Object.entries(state.events).filter(([id]) => id.startsWith('cm:')));
+  // JDS.fr's own listing stops carrying them. Drop history from a previous
+  // source generation (ids not prefixed "jds:") — this repo has already
+  // been through two source swaps (generic open data, then concerts-metal.com,
+  // both abandoned) and neither's leftovers belong in this one's archive.
+  const events = Object.fromEntries(Object.entries(state.events).filter(([id]) => id.startsWith('jds:')));
   for (const ev of fresh) {
     events[ev.id] = { ...ev, slug: slugFor(ev.id) };
-  }
-  for (const id of Object.keys(events)) {
-    if (!events[id].slug) events[id].slug = slugFor(id);
   }
 
   const today = todayISO();
   const all = Object.values(events);
   // Multi-day events already in progress (dateStart in the past, dateEnd
   // still ahead) should sort by how much of their run is left, not by
-  // their original start date — otherwise an ongoing week-long festival
-  // permanently pins itself above one-off concerts starting tomorrow.
+  // their original start date — otherwise an ongoing festival permanently
+  // pins itself above one-off concerts starting tomorrow.
   const upcomingSortKey = (e) => (e.dateStart < today ? today : e.dateStart);
   const upcoming = all
     .filter((e) => (e.dateEnd || e.dateStart) >= today)

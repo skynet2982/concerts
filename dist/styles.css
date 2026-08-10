@@ -274,20 +274,14 @@ body {
   overflow: hidden;
 }
 
-.card-genres {
-  display: flex;
-  flex-wrap: wrap;
-  gap: .3rem;
-}
-
-.card-genre {
-  font-size: .72rem;
+.card-price {
+  align-self: flex-start;
+  font-size: .74rem;
   font-weight: 600;
   color: var(--tag-fg);
   background: var(--tag-bg);
   padding: .2rem .55rem;
   border-radius: 999px;
-  white-space: nowrap;
 }
 
 .band-list {
@@ -304,10 +298,6 @@ body {
   background: var(--card-bg);
   border: 1px solid var(--card-border);
   border-radius: 8px;
-}
-
-.band-genre {
-  color: var(--card-muted);
 }
 
 .pagination {
