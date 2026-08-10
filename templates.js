@@ -1,4 +1,5 @@
 const MONTHS_SHORT = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+const MAX_CARD_GENRES = 3;
 
 function escapeHtml(str) {
   return String(str || '')
@@ -32,9 +33,9 @@ module.exports.document = function (body, { basePrefix = './', switchLinks = [],
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Concerts à Toulouse et en Occitanie">
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%B8%3C/text%3E%3C/svg%3E">
-    <title>Concerts Toulouse &amp; Occitanie</title>
+    <meta name="description" content="Concerts metal, hardcore et punk à Toulouse et en Midi-Pyrénées">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A4%98%3C/text%3E%3C/svg%3E">
+    <title>Concerts Metal Toulouse &amp; Midi-Pyrénées</title>
     <link type="text/css" rel="stylesheet" href="${basePrefix}styles.css" media="all">
   </head>
   <body>
@@ -42,7 +43,7 @@ module.exports.document = function (body, { basePrefix = './', switchLinks = [],
       <header class="bg-dark mb-4">
         <nav class="container navbar navbar-dark">
         <div class="container-fluid">
-          <a href="${basePrefix}index.html"><h1 class="text-light h2 mb-0">🎸 Concerts Toulouse &amp; Occitanie</h1></a>
+          <a href="${basePrefix}index.html"><h1 class="text-light h2 mb-0">🤘 Concerts Metal Toulouse &amp; Midi-Pyrénées</h1></a>
         </div>
         </nav>
       </header>
@@ -60,6 +61,13 @@ module.exports.document = function (body, { basePrefix = './', switchLinks = [],
   </html>`;
 }
 
+function genreBadges(genres) {
+  if (!genres || !genres.length) return '';
+  const shown = genres.slice(0, MAX_CARD_GENRES).map((g) => `<span class="card-genre">${escapeHtml(g)}</span>`);
+  if (genres.length > MAX_CARD_GENRES) shown.push(`<span class="card-genre">+${genres.length - MAX_CARD_GENRES}</span>`);
+  return `<div class="card-genres">${shown.join('')}</div>`;
+}
+
 module.exports.eventCardTemplate = function (entry, rootPrefix) {
   const href = `${rootPrefix}concerts/${entry.slug}.html`;
   return `<a class="card" href="${href}" title="${escapeHtml(entry.title)}">
@@ -69,22 +77,21 @@ module.exports.eventCardTemplate = function (entry, rootPrefix) {
     </div>
     <h3 class="card-title">${escapeHtml(entry.title)}</h3>
     <p class="card-venue">${escapeHtml(entry.venue)}${entry.commune ? ` · ${escapeHtml(entry.commune)}` : ''}</p>
-    ${entry.price ? `<span class="card-price">${escapeHtml(entry.price)}</span>` : ''}
+    ${genreBadges(entry.genres)}
   </a>`;
 }
 
-module.exports.eventPage = function (entry, rootPrefix) {
-  const mapsHref = entry.lat && entry.lon
-    ? `https://www.google.com/maps/search/?api=1&query=${entry.lat},${entry.lon}`
-    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(entry.address || entry.venue)}`;
+module.exports.eventPage = function (entry) {
+  const mapsHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${entry.venue}, ${entry.commune}`)}`;
+  const bands = entry.bands || [];
   return `<!DOCTYPE html>
   <html lang="fr">
   <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%B8%3C/text%3E%3C/svg%3E">
-    <title>${escapeHtml(entry.title)} — Concerts Toulouse &amp; Occitanie</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A4%98%3C/text%3E%3C/svg%3E">
+    <title>${escapeHtml(entry.title)} — Concerts Metal Toulouse &amp; Midi-Pyrénées</title>
     <link type="text/css" rel="stylesheet" href="../styles.css" media="all">
   </head>
   <body>
@@ -94,12 +101,15 @@ module.exports.eventPage = function (entry, rootPrefix) {
         ${dateBadge(entry.dateStart)}
         <h1 style="margin-top: .75rem;">${escapeHtml(entry.title)}</h1>
         <p class="event-meta"><strong>${displayDateRange(entry.dateStart, entry.dateEnd)}</strong></p>
-        <p class="event-meta">${escapeHtml(entry.venue)}${entry.commune ? `, ${escapeHtml(entry.commune)}` : ''}${entry.address ? `<br><span class="small">${escapeHtml(entry.address)}</span>` : ''}</p>
-        ${entry.price ? `<p class="event-meta">Tarif : ${escapeHtml(entry.price)}</p>` : ''}
+        <p class="event-meta">${escapeHtml(entry.venue)}${entry.commune ? `, ${escapeHtml(entry.commune)}` : ''}</p>
         <p class="small"><a href="${mapsHref}" target="_blank" rel="noopener">Voir sur la carte</a></p>
         <hr>
-        <div class="article-content">${entry.description ? entry.description.replace(/\r\n/g, '\n').split(/\n+/).map((p) => p.trim()).filter(Boolean).map((p) => `<p>${escapeHtml(p)}</p>`).join('') : ''}</div>
-        ${entry.url ? `<p class="mb-3"><a class="page-link" rel="noopener" target="_blank" href="${escapeHtml(entry.url)}">Voir la billetterie / plus d'infos &rarr;</a></p>` : ''}
+        ${bands.length ? `<ul class="band-list">${bands.map((b) => `<li><strong>${escapeHtml(b.name)}</strong>${b.genre ? ` <span class="small band-genre">— ${escapeHtml(b.genre)}</span>` : ''}</li>`).join('')}</ul>` : ''}
+        <div class="mb-3">
+          ${entry.ticketUrl ? `<a class="page-link" rel="noopener" target="_blank" href="${escapeHtml(entry.ticketUrl)}">Billetterie &rarr;</a>` : ''}
+          ${entry.facebookUrl ? `<a class="page-link" rel="noopener" target="_blank" href="${escapeHtml(entry.facebookUrl)}">Événement Facebook &rarr;</a>` : ''}
+        </div>
+        ${entry.url ? `<p class="small"><a rel="noopener" target="_blank" href="${escapeHtml(entry.url)}">Voir sur Concerts-Metal.com</a></p>` : ''}
         <p class="small" style="color: var(--card-muted);">Source : ${escapeHtml(entry.source)}</p>
       </article>
     </main>
