@@ -63,7 +63,10 @@ async function fetchText(url) {
     headers: { 'User-Agent': USER_AGENT },
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+  if (!res.ok) {
+    const snippet = (await res.text().catch(() => '')).slice(0, 500);
+    throw new Error(`HTTP ${res.status} for ${url} — body: ${snippet}`);
+  }
   return res.text();
 }
 
@@ -185,6 +188,7 @@ function paginationNav(pageNum, totalPages, slug) {
 
   const fresh = await fetchConcertsMetalToulouse().catch((err) => {
     console.warn(`concerts-metal.com fetch failed: ${err.message}`);
+    createFile('./dist/debug.txt', `${new Date().toISOString()}\n${err.stack || err.message}\n`);
     return [];
   });
   console.log(`Fetched ${fresh.length} concerts from toulouse.concerts-metal.com.`);
