@@ -111,7 +111,7 @@ a:hover { color: var(--card-accent-hover); }
   background-color: rgba(var(--bs-dark-rgb), 1) !important;
 }
 
-/* --- Theme: violet/rose accent, distinct from the "Actualités Toulouse" blue --- */
+/* --- Theme: crimson/black metal accent, distinct from the "Actualités Toulouse" blue --- */
 :root {
   --card-bg: #fff;
   --card-border: #e9ecef;
@@ -119,11 +119,11 @@ a:hover { color: var(--card-accent-hover); }
   --card-shadow-hover: 0 10px 24px rgba(16, 24, 40, .12);
   --card-title: #1a1d21;
   --card-muted: #6c757d;
-  --card-accent: #7c3aed;
-  --card-accent-hover: #6425d0;
-  --card-accent-bg: #f1e9ff;
-  --price-bg: #e9f8ef;
-  --price-fg: #157347;
+  --card-accent: #b91c1c;
+  --card-accent-hover: #991616;
+  --card-accent-bg: #fdeaea;
+  --tag-bg: #fdeaea;
+  --tag-fg: #b91c1c;
   --body-bg: #fff;
   --body-fg: #212529;
 }
@@ -136,11 +136,11 @@ a:hover { color: var(--card-accent-hover); }
     --card-shadow-hover: 0 10px 24px rgba(0, 0, 0, .45);
     --card-title: #f1f2f4;
     --card-muted: #9aa0a6;
-    --card-accent: #b794f6;
-    --card-accent-hover: #cbb2fb;
-    --card-accent-bg: #2c2140;
-    --price-bg: #113224;
-    --price-fg: #6fd99a;
+    --card-accent: #f87171;
+    --card-accent-hover: #fca5a5;
+    --card-accent-bg: #3a1414;
+    --tag-bg: #3a1414;
+    --tag-fg: #f87171;
     --body-bg: #101214;
     --body-fg: #e8e9eb;
   }
@@ -274,14 +274,40 @@ body {
   overflow: hidden;
 }
 
-.card-price {
-  align-self: flex-start;
-  font-size: .74rem;
+.card-genres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3rem;
+}
+
+.card-genre {
+  font-size: .72rem;
   font-weight: 600;
-  color: var(--price-fg);
-  background: var(--price-bg);
+  color: var(--tag-fg);
+  background: var(--tag-bg);
   padding: .2rem .55rem;
   border-radius: 999px;
+  white-space: nowrap;
+}
+
+.band-list {
+  list-style: none;
+  margin: 0 0 1.25rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+
+.band-list li {
+  padding: .6rem .85rem;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+}
+
+.band-genre {
+  color: var(--card-muted);
 }
 
 .pagination {
