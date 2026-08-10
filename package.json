@@ -1,0 +1,11 @@
+{
+  "name": "concerts",
+  "version": "1.0.0",
+  "description": "Concerts à venir à Toulouse et en Occitanie",
+  "scripts": {
+    "build": "node index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

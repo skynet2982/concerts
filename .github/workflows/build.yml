@@ -1,0 +1,33 @@
+name: Build and Deploy
+on:
+  push:
+    branches:
+      - main
+  schedule:
+      - cron: "0 * * * *"
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v4
+        with:
+            persist-credentials: false
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Restore previous build state 📜
+        run: |
+          git fetch origin gh-pages --depth=1 || true
+          mkdir -p dist
+          if git rev-parse --verify origin/gh-pages >/dev/null 2>&1; then
+            git archive origin/gh-pages -- history.json 2>/dev/null | tar -x -C dist 2>/dev/null || true
+          fi
+      - name: Build
+        run: node index.js
+      - name: Deploy 🚀
+        uses: JamesIves/github-pages-deploy-action@releases/v4
+        with:
+          BRANCH: gh-pages
+          folder: dist
