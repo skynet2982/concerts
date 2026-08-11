@@ -9,7 +9,7 @@ Site statique listant les prochains concerts metal, hardcore et punk à Toulouse
 Le site se reconstruit tout seul toutes les heures via GitHub Actions (voir
 `.github/workflows/build.yml`) et se déploie sur la branche `gh-pages`.
 
-- **Sources de données** (sept, fusionnées et dédupliquées — voir plus bas ;
+- **Sources de données** (huit, fusionnées et dédupliquées — voir plus bas ;
   en cas de doublon, la source la plus précisément taguée gagne, dans l'ordre
   du tableau `SOURCES` dans `index.js`) :
   1. La catégorie ["Rock" de JDS.fr pour Toulouse](https://www.jds.fr/toulouse/agenda/rock-111_B) —
@@ -43,6 +43,19 @@ Le site se reconstruit tout seul toutes les heures via GitHub Actions (voir
      étiquette de catégorie est explicitement retirée du texte avant le
      filtre mots-clés : seul le texte descriptif libre de chaque concert
      peut déclencher une correspondance. Les concerts annulés sont ignorés.
+  8. `toulouse.concerts-metal.com`, via [la Wayback Machine](https://web.archive.org/) —
+     le site est inatteignable depuis GitHub Actions (voir plus bas), et
+     archive.ph a lui-même un captcha anti-bot. web.archive.org n'a ni l'un
+     ni l'autre problème, donc cette source lit simplement le dernier
+     instantané déjà présent dans leur index (API CDX), sans déclencher de
+     nouvelle capture — une tentative de capture à la demande (Save Page
+     Now) a été faite mais n'a jamais abouti à un instantané indexé,
+     probablement parce que Cloudflare bloque aussi leur robot. Le dernier
+     instantané disponible date du 26/11/2025 : seuls les concerts encore
+     `dateStart >= aujourd'hui` sont gardés (quelques-uns pour l'instant).
+     Si la Wayback Machine réussit un jour une capture plus récente, cette
+     source en profite automatiquement au prochain build, sans changement
+     de code.
 
 - **Déduplication inter-sources** : deux sites reformulent rarement un même
   concert à l'identique (line-up complet vs. tête d'affiche seule, ordre des
@@ -52,13 +65,18 @@ Le site se reconstruit tout seul toutes les heures via GitHub Actions (voir
   la mise en place : Gloryhammer et Eluveitie étaient comptés deux fois
   (une fois via JDS.fr, une fois via Interférence) avant ce correctif.
 
-  Sites évalués et écartés :
+  Sites évalués et écartés (ou contournés) :
   - **concerts-metal.com** (la source habituelle de l'utilisateur) : domaine
     principal protégé par un captcha Cloudflare Turnstile. Son sous-domaine
     `toulouse.concerts-metal.com` n'a pas ce captcha mais reste bloqué
     spécifiquement pour les IP des runners GitHub Actions (Cloudflare les
     reconnaît comme IP de datacenter). Pas de flux RSS/API non plus (tous
-    les chemins testés renvoient la même page catch-all).
+    les chemins testés renvoient la même page catch-all). Contourné via la
+    Wayback Machine (source 8 ci-dessus), avec la limite d'un instantané
+    figé plutôt que le site en direct.
+  - **archive.ph** : lui-même protégé par un captcha anti-bot pour les
+    requêtes automatisées — même catégorie de problème que Cloudflare,
+    juste sur un autre service. web.archive.org n'a pas ce souci.
   - **Shotgun.live** : protégé par le bot-mitigation de Vercel (429 +
     challenge token), même famille de problème que Cloudflare/Turnstile —
     pas contourné, pour les mêmes raisons.
@@ -79,7 +97,7 @@ Le site se reconstruit tout seul toutes les heures via GitHub Actions (voir
 
 ## Structure
 
-- `index.js` — script de build : récupère les données des sept sources,
+- `index.js` — script de build : récupère les données des huit sources,
   filtre, déduplique, persiste l'historique, génère les pages HTML.
 - `templates.js` — gabarits HTML (page de liste, carte concert, fiche
   concert).
@@ -107,7 +125,9 @@ stabiliser sur la combinaison actuelle :
    pour élargir la couverture au-delà de Toulouse ville.
 5. + Le Metronum, Interférence et Noiser — trois sources supplémentaires
    trouvées en cherchant des alternatives proches de concerts-metal.com.
-6. + La Cabane et Zénith Toulouse Métropole (actuel) — branchées en
-   prévision de concerts metal futurs, même si elles n'en ont aucun là
-   tout de suite. Voir la liste complète des sources ci-dessus, y compris
-   celles évaluées et écartées.
+6. + La Cabane et Zénith Toulouse Métropole — branchées en prévision de
+   concerts metal futurs, même si elles n'en ont aucun là tout de suite.
+7. + concerts-metal.com via la Wayback Machine (actuel) — pas d'accès
+   direct possible (voir plus bas), mais web.archive.org n'a pas la même
+   protection que le site lui-même. Voir la liste complète des sources
+   ci-dessus, y compris celles évaluées et écartées.

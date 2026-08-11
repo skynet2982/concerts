@@ -424,7 +424,71 @@ async function fetchLaCabane() {
   return events;
 }
 
-// Source 7: Zénith Toulouse Métropole. Its own genre filter bundles
+// Source 7: toulouse.concerts-metal.com via the Wayback Machine. The site
+// itself is unreachable from GitHub Actions (see the git log — Cloudflare
+// blocks the runner IPs even without a captcha on this subdomain), and
+// archive.ph is itself gated behind its own captcha for automated requests.
+// web.archive.org has no such gate, so instead of fetching the live site,
+// this reads whichever snapshot it already has on file — via the CDX API,
+// not a fresh crawl (a Save Page Now request was tried live: it accepted
+// the job but never actually produced a new indexed capture, most likely
+// because Cloudflare blocks Internet Archive's crawler here too).
+//
+// The catch: the latest snapshot on file is from 2025-11-26 — most of what
+// it lists has already happened. Only events still dateStart >= today are
+// kept, which today means a handful, not the site's full agenda. If
+// Internet Archive ever succeeds at a fresher crawl (their own schedule,
+// not something this script controls), this source picks it up for free
+// on the next build with no code change — same CDX query, latest wins.
+const WAYBACK_CDX_URL = 'https://web.archive.org/cdx/search/cdx?url=toulouse.concerts-metal.com&output=json&filter=statuscode:200&limit=-1';
+const CONCERTS_METAL_EVENT_SPLIT = '<div itemscope itemtype="https://schema.org/MusicEvent">';
+
+function parseConcertsMetalBlock(block) {
+  const names = [...block.matchAll(/<meta itemprop="name" content="([^"]*)"/g)].map((m) => he.decode(m[1]));
+  const commune = block.match(/<meta itemprop="addressLocality" content="([^"]*)"/);
+  const dateStart = block.match(/<meta itemprop="startDate" content="([^"]*)"/);
+  const dateEnd = block.match(/<meta itemprop="endDate" content="([^"]*)"/);
+  if (!names.length || !dateStart) return null;
+
+  const bands = [...block.matchAll(/<b>([^<]*)<\/b>\s*<i>([^<]*)<\/i>/g)].map((m) => ({ name: he.decode(m[1]) }));
+  const hrefs = [...block.matchAll(/href="([^"]*)"/g)].map((m) => m[1]);
+  const detailUrl = hrefs.find((h) => h.includes('concerts-metal.com/concert')) || null;
+  const ticketUrl = hrefs.find((h) => h !== detailUrl && !h.includes('facebook.com')) || null;
+
+  const venue = names[0];
+  const title = bands.length ? bands.map((b) => b.name).join(' + ') : (names[1] || names[0]);
+
+  return {
+    id: `archive:${normalizeForKey([dateStart[1], venue, title].join('|'))}`,
+    title,
+    bands,
+    description: '',
+    venue,
+    commune: commune ? he.decode(commune[1]) : '',
+    address: '',
+    lat: null,
+    lon: null,
+    dateStart: dateStart[1],
+    dateEnd: dateEnd ? dateEnd[1] : dateStart[1],
+    price: null,
+    ticketUrl,
+    url: detailUrl,
+    source: 'Concerts-Metal.com (archive)',
+  };
+}
+
+async function fetchConcertsMetalArchive() {
+  const cdx = await fetchJson(WAYBACK_CDX_URL);
+  if (cdx.length < 2) return []; // header row only, no snapshot on file
+  const [, timestamp] = cdx[1];
+  const html = await fetchText(`https://web.archive.org/web/${timestamp}id_/https://toulouse.concerts-metal.com/`);
+  const today = todayISO();
+  return html.split(CONCERTS_METAL_EVENT_SPLIT).slice(1)
+    .map(parseConcertsMetalBlock)
+    .filter((ev) => ev && ev.dateStart >= today);
+}
+
+// Source 8: Zénith Toulouse Métropole. Its own genre filter bundles
 // "Pop / Rock / Métal" as one category, so — like JDS's "Rock" — that label
 // alone can't be trusted (Placebo is filed under it too); each candidate's
 // detail page is fetched and the bucket label itself is stripped out before
@@ -595,6 +659,9 @@ function paginationNav(pageNum, totalPages, slug) {
     { prefix: 'noiser', name: 'Noiser', fetcher: fetchNoiser },
     { prefix: 'lacabane', name: 'La Cabane', fetcher: fetchLaCabane },
     { prefix: 'zenith', name: 'Zénith Toulouse Métropole', fetcher: fetchZenith },
+    // Last priority: stale archived data should lose to any live source
+    // that lists the same show.
+    { prefix: 'archive', name: 'Concerts-Metal.com (archive)', fetcher: fetchConcertsMetalArchive },
   ];
 
   const debugLines = [];
