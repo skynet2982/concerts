@@ -104,7 +104,7 @@ module.exports.eventPage = function (entry) {
         <div class="mb-3">
           ${entry.ticketUrl ? `<a class="page-link" rel="noopener" target="_blank" href="${escapeHtml(entry.ticketUrl)}">Billetterie &rarr;</a>` : ''}
         </div>
-        ${entry.url ? `<p class="small"><a rel="noopener" target="_blank" href="${escapeHtml(entry.url)}">Voir sur JDS.fr</a></p>` : ''}
+        ${entry.url ? `<p class="small"><a rel="noopener" target="_blank" href="${escapeHtml(entry.url)}">Voir sur ${escapeHtml(entry.source)}</a></p>` : ''}
         <p class="small" style="color: var(--card-muted);">Source : ${escapeHtml(entry.source)}</p>
       </article>
     </main>
