@@ -68,6 +68,18 @@ async function fetchText(url) {
   return res.text();
 }
 
+async function fetchJson(url) {
+  return JSON.parse(await fetchText(url));
+}
+
+function stripTags(html) {
+  const withoutScripts = String(html || '')
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ');
+  return he.decode(withoutScripts).replace(/\s+/g, ' ').trim();
+}
+
 function extractTicketUrl(rawUrl) {
   if (!rawUrl) return null;
   try {
@@ -239,6 +251,161 @@ async function fetchConcertAndCo() {
   return events;
 }
 
+// Source 3: Le Metronum's own WordPress "Tribe Events" REST API. Metronum
+// is a general "scène de musiques actuelles" (hip-hop, world, chanson,
+// metal all mixed under one "Concert" category), so — like JDS — results
+// go through the metal/hardcore/punk keyword filter.
+const METRONUM_API = 'https://lemetronum.fr/wp-json/tribe/events/v1/events';
+
+async function fetchMetronum() {
+  const url = `${METRONUM_API}?start_date=${todayISO()}&categories=concert&per_page=50`;
+  const data = await fetchJson(url);
+  const events = [];
+  for (const e of data.events || []) {
+    const title = he.decode(e.title || '');
+    const description = stripTags(e.description || '');
+    if (!looksLikeMetal(`${title} ${description}`)) continue;
+
+    const dateStart = (e.start_date || '').slice(0, 10);
+    const dateEnd = (e.end_date || e.start_date || '').slice(0, 10) || dateStart;
+    const venue = he.decode(e.venue?.venue || '');
+    const commune = he.decode(e.venue?.city || '');
+    const address = [e.venue?.address, [e.venue?.zip, commune].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+
+    events.push({
+      id: `metronum:${normalizeForKey([dateStart, venue, title].join('|'))}`,
+      title,
+      bands: [],
+      description,
+      venue,
+      commune,
+      address,
+      lat: e.venue?.geo_lat ? Number(e.venue.geo_lat) : null,
+      lon: e.venue?.geo_lng ? Number(e.venue.geo_lng) : null,
+      dateStart,
+      dateEnd,
+      price: e.cost || null,
+      ticketUrl: e.website || null,
+      url: e.url || null,
+      source: 'Le Metronum',
+    });
+  }
+  return events;
+}
+
+// Source 4: Interférence (Balma) — a Next.js site that ships its event data
+// as JSON in a __NEXT_DATA__ script tag, and supports server-side genre-tag
+// filtering via ?tags=. Only the "metal" tag is used: this site's "hardcore"
+// tag turned out to mean hardcore *techno* (a electronic/gabber genre), not
+// hardcore punk — filtering on it would pull in techno nights by mistake,
+// so unlike JDS/Metronum this source trusts the site's own tagging rather
+// than a keyword match, but only for the one unambiguous tag.
+const INTERFERENCE_URL = 'https://www.interference-toulouse.fr/programmation?tags=metal';
+
+async function fetchInterference() {
+  const html = await fetchText(INTERFERENCE_URL);
+  const m = html.match(/<script id="__NEXT_DATA__"[^>]*>(.*?)<\/script>/s);
+  if (!m) return [];
+  const data = JSON.parse(m[1]);
+  const rawEvents = data?.props?.pageProps?.events || [];
+  return rawEvents.map((e) => {
+    const dateStart = (e.event_starting || '').slice(0, 10);
+    const dateEnd = (e.event_ending || e.event_starting || '').slice(0, 10) || dateStart;
+    // venue_name/venue_address carry stray tabs/newlines in this site's own
+    // CMS data — collapse whitespace rather than passing it straight through.
+    const venueName = he.decode(e.venue_name || '').replace(/\s+/g, ' ').trim();
+    const venue = venueName + (e.venue_room ? ` (${he.decode(e.venue_room)})` : '');
+    const address = he.decode(e.venue_address || '').replace(/\s+/g, ' ').trim();
+    const communeMatch = address.match(/\d{5}\s+(.*)$/);
+    return {
+      id: `interference:${normalizeForKey([dateStart, venue, e.event_name].join('|'))}`,
+      title: he.decode(e.event_name || ''),
+      bands: [],
+      description: '',
+      venue,
+      commune: communeMatch ? communeMatch[1].trim() : '',
+      address,
+      lat: null,
+      lon: null,
+      dateStart,
+      dateEnd,
+      price: e.start_price ? `À partir de ${e.start_price} €` : null,
+      ticketUrl: e.event_external_ticketing_url || null,
+      url: INTERFERENCE_URL,
+      source: 'Interférence',
+    };
+  });
+}
+
+// Source 5: Noiser — a small Toulouse rock/metal/stoner promoter, mostly
+// booking Le Rex. Only ~5 shows live at a time, so each is checked against
+// its own detail page (which spells out each act's genre in parentheses,
+// e.g. "MOURIR (Black Metal - France)") rather than relying on the sparse
+// listing-page title alone.
+const NOISER_URL = 'https://www.noiser.fr/programmation';
+const FR_MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+
+function parseFrenchDate(str) {
+  const m = str.match(/(\d{1,2})\s+([a-zéû]+)\s+(\d{4})/i);
+  if (!m) return null;
+  const monthIdx = FR_MONTHS.findIndex((mo) => mo === m[2].toLowerCase());
+  if (monthIdx === -1) return null;
+  const day = m[1].padStart(2, '0');
+  const month = String(monthIdx + 1).padStart(2, '0');
+  return `${m[3]}-${month}-${day}`;
+}
+
+async function fetchNoiser() {
+  const html = await fetchText(NOISER_URL);
+  const blocks = html.split('<div class="event row">').slice(1);
+  const candidates = [];
+  for (const b of blocks) {
+    const h2 = b.match(/<h2>(.*?)<\/h2>/s);
+    const h3 = b.match(/<h3>(.*?)<\/h3>/s);
+    const moreLink = b.match(/href="([^"]*)">\s*Plus d'informations/);
+    if (!h2 || !h3 || !moreLink) continue;
+    const parts = stripTags(h3[1]).split('|').map((s) => s.trim());
+    const dateStart = parseFrenchDate(parts[0] || '');
+    if (!dateStart) continue;
+    candidates.push({
+      title: he.decode(stripTags(h2[1])),
+      venue: parts[2] || '',
+      dateStart,
+      detailUrl: new URL(moreLink[1], NOISER_URL).href,
+    });
+  }
+
+  const events = [];
+  for (const c of candidates) {
+    const detailText = stripTags(await fetchText(c.detailUrl).catch(() => ''));
+    if (!looksLikeMetal(detailText)) continue;
+    const addrMatch = detailText.match(/Adresse\s+(.*?)\s+Transports/);
+    // Real copy starts after the nav breadcrumbs ("Presentation Programmation
+    // Galerie... Noiser présente : ✘ BAND (Genre - Country)...") — drop
+    // everything before that so the description doesn't open with site chrome.
+    const contentStart = detailText.indexOf('Noiser présente');
+    const description = contentStart >= 0 ? detailText.slice(contentStart) : detailText;
+    events.push({
+      id: `noiser:${normalizeForKey([c.dateStart, c.venue, c.title].join('|'))}`,
+      title: c.title,
+      bands: [],
+      description: description.slice(0, 800),
+      venue: c.venue,
+      commune: '',
+      address: addrMatch ? addrMatch[1] : '',
+      lat: null,
+      lon: null,
+      dateStart: c.dateStart,
+      dateEnd: c.dateStart,
+      price: null,
+      ticketUrl: c.detailUrl,
+      url: c.detailUrl,
+      source: 'Noiser',
+    });
+  }
+  return events;
+}
+
 function paginate(items) {
   const pages = [];
   for (let i = 0; i < items.length || i === 0; i += PAGE_SIZE) {
@@ -284,28 +451,30 @@ function paginationNav(pageNum, totalPages, slug) {
 (async () => {
   const state = loadState();
 
-  const debugLines = [];
-  const [jdsEvents, cacEvents] = await Promise.all([
-    fetchJdsRock().catch((err) => {
-      console.warn(`JDS.fr fetch failed: ${err.message}`);
-      debugLines.push(`JDS.fr: ${err.stack || err.message}`);
-      return [];
-    }),
-    fetchConcertAndCo().catch((err) => {
-      console.warn(`ConcertAndCo.com fetch failed: ${err.message}`);
-      debugLines.push(`ConcertAndCo.com: ${err.stack || err.message}`);
-      return [];
-    }),
-  ]);
-  if (debugLines.length) createFile('./dist/debug.txt', `${new Date().toISOString()}\n${debugLines.join('\n\n')}\n`);
-  console.log(`Fetched ${jdsEvents.length} concerts from JDS.fr, ${cacEvents.length} from ConcertAndCo.com.`);
+  // Listed in dedup priority order: when the same concert legitimately
+  // appears on two sites, whichever is fetched first here wins.
+  const SOURCES = [
+    { prefix: 'jds', name: 'JDS.fr', fetcher: fetchJdsRock },
+    { prefix: 'metronum', name: 'Le Metronum', fetcher: fetchMetronum },
+    { prefix: 'interference', name: 'Interférence', fetcher: fetchInterference },
+    { prefix: 'cac', name: 'ConcertAndCo.com', fetcher: fetchConcertAndCo },
+    { prefix: 'noiser', name: 'Noiser', fetcher: fetchNoiser },
+  ];
 
-  // JDS.fr is more precisely tagged (proper JSON-LD, keyword-filtered), so
-  // it wins on duplicates — the same concert can legitimately appear on
-  // both sites.
+  const debugLines = [];
+  const results = await Promise.all(SOURCES.map(({ name, fetcher }) => fetcher().catch((err) => {
+    console.warn(`${name} fetch failed: ${err.message}`);
+    debugLines.push(`${name}: ${err.stack || err.message}`);
+    return [];
+  })));
+  if (debugLines.length) createFile('./dist/debug.txt', `${new Date().toISOString()}\n${debugLines.join('\n\n')}\n`);
+  console.log(SOURCES.map((s, i) => `${results[i].length} from ${s.name}`).join(', '));
+
+  // Dedup across sources: whichever source's event we see first (source
+  // priority order above) wins when the same concert is listed on two sites.
   const seenKeys = new Set();
   const fresh = [];
-  for (const ev of [...jdsEvents, ...cacEvents]) {
+  for (const ev of results.flat()) {
     const key = normalizeForKey([ev.dateStart, ev.venue, ev.title].join('|'));
     if (seenKeys.has(key)) continue;
     seenKeys.add(key);
@@ -313,11 +482,12 @@ function paginationNav(pageNum, totalPages, slug) {
   }
 
   // Merge into persisted history: upsert by id so events survive even after
-  // a source stops listing them. Drop history from a previous source
-  // generation (ids not prefixed "jds:"/"cac:") — this repo has already
-  // been through two source swaps (generic open data, then concerts-metal.com,
-  // both abandoned) and neither's leftovers belong in this one's archive.
-  const events = Object.fromEntries(Object.entries(state.events).filter(([id]) => id.startsWith('jds:') || id.startsWith('cac:')));
+  // a source stops listing them. Drop history from a source generation this
+  // repo has since moved off of (this repo has already been through two
+  // full source swaps — generic open data, then concerts-metal.com, both
+  // abandoned — and neither's leftovers belong in the current archive).
+  const activePrefixes = SOURCES.map((s) => `${s.prefix}:`);
+  const events = Object.fromEntries(Object.entries(state.events).filter(([id]) => activePrefixes.some((p) => id.startsWith(p))));
   for (const ev of fresh) {
     events[ev.id] = { ...ev, slug: slugFor(ev.id) };
   }

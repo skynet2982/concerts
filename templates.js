@@ -76,7 +76,7 @@ module.exports.eventCardTemplate = function (entry, rootPrefix) {
 module.exports.eventPage = function (entry) {
   const mapsHref = entry.lat && entry.lon
     ? `https://www.google.com/maps/search/?api=1&query=${entry.lat},${entry.lon}`
-    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${entry.venue}, ${entry.commune}`)}`;
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([entry.venue, entry.commune].filter(Boolean).join(', '))}`;
   const bands = entry.bands || [];
   return `<!DOCTYPE html>
   <html lang="fr">
