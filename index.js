@@ -606,20 +606,6 @@ function paginationNav(pageNum, totalPages, slug) {
   if (debugLines.length) createFile('./dist/debug.txt', `${new Date().toISOString()}\n${debugLines.join('\n\n')}\n`);
   console.log(SOURCES.map((s, i) => `${results[i].length} from ${s.name}`).join(', '));
 
-  // Dedup across sources: same date + any shared band name => same show.
-  // Whichever source's event we see first (source priority order above)
-  // wins and keeps the slot; a later event only needs one overlapping
-  // band name on the same day to be treated as the same concert.
-  const seenBandDateKeys = new Set();
-  const fresh = [];
-  for (const ev of results.flat()) {
-    const keys = bandTokensOf(ev).map((token) => `${ev.dateStart}|${token}`);
-    if (keys.length === 0) keys.push(`${ev.dateStart}|${normalizeForKey(ev.title)}`);
-    if (keys.some((k) => seenBandDateKeys.has(k))) continue;
-    keys.forEach((k) => seenBandDateKeys.add(k));
-    fresh.push(ev);
-  }
-
   // Merge into persisted history: upsert by id so events survive even after
   // a source stops listing them. Drop history from a source generation this
   // repo has since moved off of (this repo has already been through two
@@ -627,8 +613,29 @@ function paginationNav(pageNum, totalPages, slug) {
   // abandoned — and neither's leftovers belong in the current archive).
   const activePrefixes = SOURCES.map((s) => `${s.prefix}:`);
   const events = Object.fromEntries(Object.entries(state.events).filter(([id]) => activePrefixes.some((p) => id.startsWith(p))));
-  for (const ev of fresh) {
+  for (const ev of results.flat()) {
     events[ev.id] = { ...ev, slug: slugFor(ev.id) };
+  }
+
+  // Dedup across sources: same date + any shared band name => same show.
+  // Applied to the *whole* merged set (persisted + fresh), not just this
+  // run's fresh fetch — otherwise a duplicate that made it into history on
+  // an earlier run (or before this dedup logic existed) never gets cleaned
+  // up, since upserting by id alone can't tell that two different ids are
+  // the same real concert. Priority follows SOURCES order regardless of
+  // which one happened to be inserted first.
+  const sourcePriority = (id) => activePrefixes.findIndex((p) => id.startsWith(p));
+  const orderedIds = Object.keys(events).sort((a, b) => sourcePriority(a) - sourcePriority(b));
+  const seenBandDateKeys = new Set();
+  for (const id of orderedIds) {
+    const ev = events[id];
+    const keys = bandTokensOf(ev).map((token) => `${ev.dateStart}|${token}`);
+    if (keys.length === 0) keys.push(`${ev.dateStart}|${normalizeForKey(ev.title)}`);
+    if (keys.some((k) => seenBandDateKeys.has(k))) {
+      delete events[id];
+      continue;
+    }
+    keys.forEach((k) => seenBandDateKeys.add(k));
   }
 
   const today = todayISO();
