@@ -56,6 +56,16 @@ function normalizeForKey(str) {
     .trim();
 }
 
+// Two sources rarely phrase the same show's title identically (a full
+// lineup vs. just the headliner, different word order, an added "Tourn\u00e9e
+// 2026"\u2026), so cross-source dedup keys on individual band names rather than
+// the whole title: same date + any one shared band name => same show.
+function bandTokensOf(ev) {
+  const names = (ev.bands || []).map((b) => b.name);
+  const source = names.length ? names : ev.title.split(/\s*[+&/]\s*|\s*,\s*/);
+  return [...new Set(source.map((n) => normalizeForKey(n)).filter(Boolean))];
+}
+
 async function fetchText(url) {
   const res = await fetch(url, {
     headers: { 'User-Agent': USER_AGENT },
@@ -346,13 +356,137 @@ const NOISER_URL = 'https://www.noiser.fr/programmation';
 const FR_MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 
 function parseFrenchDate(str) {
-  const m = str.match(/(\d{1,2})\s+([a-zéû]+)\s+(\d{4})/i);
+  // Accepts both full ("septembre") and abbreviated ("sept.") month names.
+  const m = str.match(/(\d{1,2})\s+([a-zéû]+)\.?\s+(\d{4})/i);
   if (!m) return null;
-  const monthIdx = FR_MONTHS.findIndex((mo) => mo === m[2].toLowerCase());
+  const token = m[2].toLowerCase();
+  const monthIdx = FR_MONTHS.findIndex((mo) => mo.startsWith(token));
   if (monthIdx === -1) return null;
   const day = m[1].padStart(2, '0');
   const month = String(monthIdx + 1).padStart(2, '0');
   return `${m[3]}-${month}-${day}`;
+}
+
+// Source 6: La Cabane (Toulouse) — a "bleucitron.net" white-label ticketing
+// page. Currently books mostly electro/comedy/burlesque, no metal at all,
+// but it's a real venue that could book a metal show at any point, and it's
+// cheap to keep polling (plain HTML table, no Cloudflare) — so it stays
+// wired up even while it contributes zero events.
+const LACABANE_URL = 'https://lacabane.bleucitron.net/';
+const LACABANE_MAX_PAGES = 5;
+
+async function fetchLaCabane() {
+  const events = [];
+  for (let page = 1; page <= LACABANE_MAX_PAGES; page++) {
+    const html = await fetchText(page === 1 ? LACABANE_URL : `${LACABANE_URL}?page=${page}`);
+    // Split on the bare `<tr>` that opens each event row — the page also
+    // has a `<tr class="mobile-reserve">` duplicate-link row per event, but
+    // since that one carries an attribute it doesn't match this exact
+    // split marker and just rides along inside the preceding block, where
+    // it's harmless (none of the fields below match inside it).
+    const rowBlocks = html.split('<tr>').slice(1);
+    if (rowBlocks.length === 0) break;
+    for (const block of rowBlocks) {
+      const titleM = block.match(/<span class="main-name">(.*?)<\/span>/s);
+      const subtitleM = block.match(/<span class="second-name">(.*?)<\/span>/s);
+      const dateM = block.match(/<span class="date">(.*?)<\/span>/s);
+      const villeM = block.match(/<span class="ville">(.*?)<\/span>/s);
+      const lieuM = block.match(/<span class="lieu">(.*?)<\/span>/s);
+      const hrefM = block.match(/href="(https:\/\/lacabane\.bleucitron\.net\/reserver\/[^"]*)"/);
+      if (!titleM || !dateM || !lieuM) continue;
+
+      const title = he.decode(stripTags(titleM[1]));
+      const subtitle = subtitleM ? he.decode(stripTags(subtitleM[1])) : '';
+      if (!looksLikeMetal(`${title} ${subtitle}`)) continue;
+      const dateStart = parseFrenchDate(stripTags(dateM[1]));
+      if (!dateStart) continue;
+      const venue = he.decode(stripTags(lieuM[1]));
+
+      events.push({
+        id: `lacabane:${normalizeForKey([dateStart, venue, title].join('|'))}`,
+        title,
+        bands: [],
+        description: subtitle,
+        venue,
+        commune: villeM ? he.decode(stripTags(villeM[1])) : '',
+        address: '',
+        lat: null,
+        lon: null,
+        dateStart,
+        dateEnd: dateStart,
+        price: null,
+        ticketUrl: hrefM ? hrefM[1] : null,
+        url: hrefM ? hrefM[1] : null,
+        source: 'La Cabane',
+      });
+    }
+  }
+  return events;
+}
+
+// Source 7: Zénith Toulouse Métropole. Its own genre filter bundles
+// "Pop / Rock / Métal" as one category, so — like JDS's "Rock" — that label
+// alone can't be trusted (Placebo is filed under it too); each candidate's
+// detail page is fetched and the bucket label itself is stripped out before
+// running it through the metal keyword filter, so only the free-text show
+// description can trigger a match.
+const ZENITH_URL = 'https://zenith-toulousemetropole.com/program';
+const ZENITH_GENRE_LABEL_RE = /pop\s*\/\s*rock\s*\/\s*m[ée]tal/gi;
+
+async function fetchZenith() {
+  const html = await fetchText(ZENITH_URL);
+  const blocks = html.split(/<div\s+class="card-show"\s*>/).slice(1);
+  const candidates = [];
+  for (const block of blocks) {
+    if (/card-show__state"[^>]*>\s*Annul/s.test(block)) continue; // cancelled
+    const artistM = block.match(/<div class="card-show__artist">(.*?)<\/div>/s);
+    const dateM = block.match(/<div class="card-show__date">(.*?)<\/div>/s);
+    const hrefM = block.match(/<a href="(\/shows\/[^"]*)" class="card-show__button/);
+    if (!artistM || !dateM || !hrefM) continue;
+    const dateStart = parseFrenchDate(stripTags(dateM[1]));
+    if (!dateStart) continue;
+    candidates.push({
+      title: he.decode(stripTags(artistM[1])),
+      dateStart,
+      detailUrl: new URL(hrefM[1], ZENITH_URL).href,
+    });
+  }
+
+  const events = [];
+  for (const c of candidates) {
+    const detailHtml = await fetchText(c.detailUrl).catch(() => '');
+    const text = stripTags(detailHtml).replace(ZENITH_GENRE_LABEL_RE, '');
+    if (!looksLikeMetal(text)) continue;
+
+    const priceM = text.match(/tarif\s+([\d.,]+(?:\s*[àé]\s*[\d.,]+)?\s*€)/i);
+    let ticketUrl = null;
+    const booksM = detailHtml.match(/data-books="(\[.*?\])"/s);
+    if (booksM) {
+      try {
+        const books = JSON.parse(he.decode(booksM[1]));
+        ticketUrl = books[0]?.link || null;
+      } catch { /* leave ticketUrl null */ }
+    }
+
+    events.push({
+      id: `zenith:${normalizeForKey([c.dateStart, 'zenith', c.title].join('|'))}`,
+      title: c.title,
+      bands: [],
+      description: text.slice(0, 800),
+      venue: 'Zénith Toulouse Métropole',
+      commune: 'Toulouse',
+      address: '11 Avenue Raymond Badiou, 31300 Toulouse',
+      lat: null,
+      lon: null,
+      dateStart: c.dateStart,
+      dateEnd: c.dateStart,
+      price: priceM ? priceM[1] : null,
+      ticketUrl,
+      url: c.detailUrl,
+      source: 'Zénith Toulouse Métropole',
+    });
+  }
+  return events;
 }
 
 async function fetchNoiser() {
@@ -459,6 +593,8 @@ function paginationNav(pageNum, totalPages, slug) {
     { prefix: 'interference', name: 'Interférence', fetcher: fetchInterference },
     { prefix: 'cac', name: 'ConcertAndCo.com', fetcher: fetchConcertAndCo },
     { prefix: 'noiser', name: 'Noiser', fetcher: fetchNoiser },
+    { prefix: 'lacabane', name: 'La Cabane', fetcher: fetchLaCabane },
+    { prefix: 'zenith', name: 'Zénith Toulouse Métropole', fetcher: fetchZenith },
   ];
 
   const debugLines = [];
@@ -470,14 +606,17 @@ function paginationNav(pageNum, totalPages, slug) {
   if (debugLines.length) createFile('./dist/debug.txt', `${new Date().toISOString()}\n${debugLines.join('\n\n')}\n`);
   console.log(SOURCES.map((s, i) => `${results[i].length} from ${s.name}`).join(', '));
 
-  // Dedup across sources: whichever source's event we see first (source
-  // priority order above) wins when the same concert is listed on two sites.
-  const seenKeys = new Set();
+  // Dedup across sources: same date + any shared band name => same show.
+  // Whichever source's event we see first (source priority order above)
+  // wins and keeps the slot; a later event only needs one overlapping
+  // band name on the same day to be treated as the same concert.
+  const seenBandDateKeys = new Set();
   const fresh = [];
   for (const ev of results.flat()) {
-    const key = normalizeForKey([ev.dateStart, ev.venue, ev.title].join('|'));
-    if (seenKeys.has(key)) continue;
-    seenKeys.add(key);
+    const keys = bandTokensOf(ev).map((token) => `${ev.dateStart}|${token}`);
+    if (keys.length === 0) keys.push(`${ev.dateStart}|${normalizeForKey(ev.title)}`);
+    if (keys.some((k) => seenBandDateKeys.has(k))) continue;
+    keys.forEach((k) => seenBandDateKeys.add(k));
     fresh.push(ev);
   }
 

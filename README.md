@@ -9,8 +9,8 @@ Site statique listant les prochains concerts metal, hardcore et punk à Toulouse
 Le site se reconstruit tout seul toutes les heures via GitHub Actions (voir
 `.github/workflows/build.yml`) et se déploie sur la branche `gh-pages`.
 
-- **Sources de données** (cinq, fusionnées et dédupliquées par date+lieu+titre ;
-  en cas de doublon, la source la plus précisément taguée gagne — voir l'ordre
+- **Sources de données** (sept, fusionnées et dédupliquées — voir plus bas ;
+  en cas de doublon, la source la plus précisément taguée gagne, dans l'ordre
   du tableau `SOURCES` dans `index.js`) :
   1. La catégorie ["Rock" de JDS.fr pour Toulouse](https://www.jds.fr/toulouse/agenda/rock-111_B) —
      JSON-LD `schema.org/MusicEvent` (lieu, adresse, GPS, tarif, billetterie).
@@ -33,6 +33,24 @@ Le site se reconstruit tout seul toutes les heures via GitHub Actions (voir
      rock/metal/stoner (essentiellement au Rex). ~5 concerts à la fois : le
      filtre mots-clés est appliqué à la fiche détaillée de chaque concert
      (qui précise le genre de chaque groupe), pas au simple titre de la liste.
+  6. [La Cabane](https://lacabane.bleucitron.net/) — table HTML classique.
+     Sa programmation actuelle est 100% électro/comédie (zéro concert metal
+     en ce moment), mais la source reste branchée pour le jour où elle en
+     programmera un.
+  7. [Zénith Toulouse Métropole](https://zenith-toulousemetropole.com/program) —
+     son filtre de genre regroupe "Pop / Rock / Métal" en une seule catégorie
+     (Placebo y est classé alors que ce n'est pas du metal), donc cette
+     étiquette de catégorie est explicitement retirée du texte avant le
+     filtre mots-clés : seul le texte descriptif libre de chaque concert
+     peut déclencher une correspondance. Les concerts annulés sont ignorés.
+
+- **Déduplication inter-sources** : deux sites reformulent rarement un même
+  concert à l'identique (line-up complet vs. tête d'affiche seule, ordre des
+  mots différent…), donc la clé de dédoublonnage n'est pas le titre exact
+  mais *n'importe quel nom de groupe partagé à la même date* (voir
+  `bandTokensOf` dans `index.js`). Ça a d'ailleurs révélé un vrai bug lors de
+  la mise en place : Gloryhammer et Eluveitie étaient comptés deux fois
+  (une fois via JDS.fr, une fois via Interférence) avant ce correctif.
 
   Sites évalués et écartés :
   - **concerts-metal.com** (la source habituelle de l'utilisateur) : domaine
@@ -41,20 +59,17 @@ Le site se reconstruit tout seul toutes les heures via GitHub Actions (voir
     spécifiquement pour les IP des runners GitHub Actions (Cloudflare les
     reconnaît comme IP de datacenter). Pas de flux RSS/API non plus (tous
     les chemins testés renvoient la même page catch-all).
+  - **Shotgun.live** : protégé par le bot-mitigation de Vercel (429 +
+    challenge token), même famille de problème que Cloudflare/Turnstile —
+    pas contourné, pour les mêmes raisons.
+  - **Billetterie Festik du Noiser** (`billetterie.festik.net/noiser`) :
+    SPA Vue.js pur, aucune donnée dans le HTML statique et aucun endpoint
+    API public trouvé dans les bundles JS. De toute façon inutile : ce sont
+    les mêmes concerts que ceux déjà récupérés sur noiser.fr.
   - **Actu-Metal Toulouse** : blog, plus mis à jour depuis mars 2025.
   - **Le Rex de Toulouse** (site propre) : programmation chargée en JS,
     aucune donnée exploitable en HTML statique ni API trouvée — mais ses
     concerts remontent déjà via JDS.fr/Noiser/Interférence.
-  - **La Cabane** (bleucitron.net) : techniquement scrapable (table HTML
-    classique), mais zéro concert metal actuellement (programmation
-    électro/comédie) — pas rajoutée tant que ça reste le cas.
-- **concerts-metal.com** (la source habituelle de l'utilisateur) est
-  protégé par un captcha Cloudflare Turnstile sur son domaine principal.
-  Son sous-domaine `toulouse.concerts-metal.com` n'a pas ce captcha mais
-  reste bloqué spécifiquement pour les IP des runners GitHub Actions
-  (Cloudflare les reconnaît comme IP de datacenter) — inutilisable en
-  pratique pour un build automatisé. Pas de flux RSS/API disponible non
-  plus (tous les chemins testés renvoient la même page catch-all).
 - **Historique** : chaque run fusionne les concerts récupérés avec
   `dist/history.json` (restauré depuis `gh-pages` avant le build), donc un
   concert reste visible dans l'onglet "Historique" même après sa
@@ -64,7 +79,7 @@ Le site se reconstruit tout seul toutes les heures via GitHub Actions (voir
 
 ## Structure
 
-- `index.js` — script de build : récupère les données des cinq sources,
+- `index.js` — script de build : récupère les données des sept sources,
   filtre, déduplique, persiste l'historique, génère les pages HTML.
 - `templates.js` — gabarits HTML (page de liste, carte concert, fiche
   concert).
@@ -90,7 +105,9 @@ stabiliser sur la combinaison actuelle :
 3. JDS.fr (fiable depuis GitHub Actions, filtré par mots-clés).
 4. + ConcertAndCo.com en complément — deuxième source metal-curated,
    pour élargir la couverture au-delà de Toulouse ville.
-5. + Le Metronum, Interférence et Noiser (actuel) — trois sources
-   supplémentaires trouvées en cherchant des alternatives proches de
-   concerts-metal.com ; voir la liste complète des sources ci-dessus,
-   y compris celles évaluées et écartées.
+5. + Le Metronum, Interférence et Noiser — trois sources supplémentaires
+   trouvées en cherchant des alternatives proches de concerts-metal.com.
+6. + La Cabane et Zénith Toulouse Métropole (actuel) — branchées en
+   prévision de concerts metal futurs, même si elles n'en ont aucun là
+   tout de suite. Voir la liste complète des sources ci-dessus, y compris
+   celles évaluées et écartées.
