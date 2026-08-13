@@ -1,4 +1,4 @@
-2026-08-13T19:13:58.197Z
+2026-08-13T20:39:14.500Z
 Concerts-Metal.com (archive): Error: HTTP 503 for https://web.archive.org/web/20260811144816id_/https://toulouse.concerts-metal.com/ — body: <html><body><h1>503 Service Unavailable</h1>
 No server is available to handle this request.
 </body></html>
@@ -7,12 +7,4 @@ No server is available to handle this request.
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
     at async fetchConcertsMetalArchive (/home/runner/work/concerts/concerts/index.js:484:16)
     at async Promise.all (index 7)
-    at async /home/runner/work/concerts/concerts/index.js:668:19
-
-Zénith Toulouse Métropole: TypeError: fetch failed
-    at node:internal/deps/undici/undici:15141:13
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async fetchText (/home/runner/work/concerts/concerts/index.js:70:15)
-    at async fetchZenith (/home/runner/work/concerts/concerts/index.js:501:16)
-    at async Promise.all (index 6)
     at async /home/runner/work/concerts/concerts/index.js:668:19
