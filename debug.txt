@@ -1,4 +1,11 @@
-2026-08-14T01:42:33.673Z
+2026-08-14T04:06:10.452Z
+ConcertAndCo.com: Error: HTTP 503 for https://www.concertandco.com/region-style/midi-pyrenees-languedoc-roussillon/metal-hardcore-hard-rock/billet-concert-2-MID.htm — body: <!DOCTYPE HTML><html lang="en-US"><head> <meta charset="UTF-8" /> <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" /> <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1" /> <meta name="robots" content="noindex, nofollow" /> <meta name="viewport" content="width=device-widt
+    at fetchText (/home/runner/work/concerts/concerts/index.js:76:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async fetchConcertAndCo (/home/runner/work/concerts/concerts/index.js:251:16)
+    at async Promise.all (index 3)
+    at async /home/runner/work/concerts/concerts/index.js:668:19
+
 Zénith Toulouse Métropole: TypeError: fetch failed
     at node:internal/deps/undici/undici:15157:13
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
