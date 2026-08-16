@@ -1,8 +1,14 @@
-2026-08-16T22:17:56.876Z
-Concerts-Metal.com (archive): Error: HTTP 503 for https://web.archive.org/cdx/search/cdx?url=toulouse.concerts-metal.com&output=json&filter=statuscode:200&limit=-1 — body: <html><body><h1>503 Service Unavailable</h1>
-No server is available to handle this request.
-</body></html>
-
+2026-08-16T23:16:45.782Z
+Concerts-Metal.com (archive): Error: HTTP 498 for https://web.archive.org/cdx/search/cdx?url=toulouse.concerts-metal.com&output=json&filter=statuscode:200&limit=-1 — body: <html>
+<head><title>404 Not Found</title></head>
+<body>
+<center><h1>404 Not Found</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to di
     at fetchText (/home/runner/work/concerts/concerts/index.js:76:11)
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
     at async fetchJson (/home/runner/work/concerts/concerts/index.js:82:21)
