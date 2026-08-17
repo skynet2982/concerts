@@ -1,10 +1,9 @@
-2026-08-17T14:24:50.114Z
-Concerts-Metal.com (archive): Error: HTTP 503 for https://web.archive.org/web/20260811144816id_/https://toulouse.concerts-metal.com/ — body: <html><body><h1>503 Service Unavailable</h1>
-No server is available to handle this request.
-</body></html>
-
-    at fetchText (/home/runner/work/concerts/concerts/index.js:76:11)
+2026-08-17T15:21:57.786Z
+Concerts-Metal.com (archive): TimeoutError: The operation was aborted due to timeout
+    at node:internal/deps/undici/undici:15157:13
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async fetchConcertsMetalArchive (/home/runner/work/concerts/concerts/index.js:496:16)
+    at async fetchText (/home/runner/work/concerts/concerts/index.js:70:15)
+    at async fetchJson (/home/runner/work/concerts/concerts/index.js:82:21)
+    at async fetchConcertsMetalArchive (/home/runner/work/concerts/concerts/index.js:493:15)
     at async Promise.all (index 7)
     at async /home/runner/work/concerts/concerts/index.js:680:19
