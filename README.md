@@ -46,16 +46,24 @@ Le site se reconstruit tout seul toutes les heures via GitHub Actions (voir
   8. `toulouse.concerts-metal.com`, via [la Wayback Machine](https://web.archive.org/) —
      le site est inatteignable depuis GitHub Actions (voir plus bas), et
      archive.ph a lui-même un captcha anti-bot. web.archive.org n'a ni l'un
-     ni l'autre problème, donc cette source lit simplement le dernier
-     instantané déjà présent dans leur index (API CDX), sans déclencher de
-     nouvelle capture — une tentative de capture à la demande (Save Page
-     Now) a été faite mais n'a jamais abouti à un instantané indexé,
-     probablement parce que Cloudflare bloque aussi leur robot. Le dernier
-     instantané disponible date du 26/11/2025 : seuls les concerts encore
-     `dateStart >= aujourd'hui` sont gardés (quelques-uns pour l'instant).
-     Si la Wayback Machine réussit un jour une capture plus récente, cette
-     source en profite automatiquement au prochain build, sans changement
-     de code.
+     ni l'autre problème, donc cette source lit le dernier instantané déjà
+     présent dans leur index (API CDX) — elle ne déclenche pas elle-même de
+     nouvelle capture, c'est le rôle du workflow séparé décrit ci-dessous.
+     Seuls les concerts encore `dateStart >= aujourd'hui` sont gardés.
+
+     Un second workflow, [`archive-refresh.yml`](.github/workflows/archive-refresh.yml),
+     tourne une fois par semaine (lundi 3h UTC, séparé du build horaire
+     pour ne pas spammer Internet Archive de demandes) et envoie une
+     requête *Save Page Now* pour rafraîchir cet instantané. Le job ne
+     vérifie pas le résultat : la capture est asynchrone et peut échouer
+     silencieusement (Cloudflare bloque parfois aussi le robot d'Internet
+     Archive), donc c'est volontairement fire-and-forget — le prochain
+     build horaire lira simplement le plus récent instantané disponible,
+     quel qu'il soit, sans dépendre du succès de ce job. Ça a déjà
+     fonctionné une fois : une tentative de capture manuelle avait semblé
+     échouer sur le moment (rien de nouveau dans l'index CDX juste après),
+     mais s'est avérée avoir abouti quelques heures plus tard — la source
+     est passée de 5-6 concerts (vieux instantané de novembre 2025) à 36.
 
 - **Déduplication inter-sources** : deux sites reformulent rarement un même
   concert à l'identique (line-up complet vs. tête d'affiche seule, ordre des

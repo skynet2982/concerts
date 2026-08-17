@@ -1,0 +1,19 @@
+name: Refresh concerts-metal.com archive snapshot
+on:
+  schedule:
+      - cron: "0 3 * * 1" # weekly, Monday 03:00 UTC
+  workflow_dispatch:
+jobs:
+  save-page-now:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Request a fresh Wayback Machine capture
+        run: |
+          # Fire-and-forget: Save Page Now queues the crawl asynchronously
+          # and Cloudflare may block it entirely (see index.js for why),
+          # so this doesn't wait for or verify success — the main hourly
+          # build just reads whatever's newest in the Wayback CDX index
+          # whenever it next runs, with no coupling to this job's outcome.
+          curl -s -o /dev/null -w "HTTP %{http_code}\n" \
+            -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36" \
+            "https://web.archive.org/save/https://toulouse.concerts-metal.com/"
