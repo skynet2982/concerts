@@ -103,8 +103,9 @@ module.exports.eventPage = function (entry) {
         ${entry.description ? `<div class="article-content">${entry.description.replace(/\r\n/g, '\n').split(/\n+/).map((p) => p.trim()).filter(Boolean).map((p) => `<p>${escapeHtml(p)}</p>`).join('')}</div>` : ''}
         <div class="mb-3">
           ${entry.ticketUrl ? `<a class="page-link" rel="noopener" target="_blank" href="${escapeHtml(entry.ticketUrl)}">Billetterie &rarr;</a>` : ''}
+          ${!entry.ticketUrl && entry.url ? `<a class="page-link" rel="noopener" target="_blank" href="${escapeHtml(entry.url)}">Voir sur ${escapeHtml(entry.source)} &rarr;</a>` : ''}
         </div>
-        ${entry.url ? `<p class="small"><a rel="noopener" target="_blank" href="${escapeHtml(entry.url)}">Voir sur ${escapeHtml(entry.source)}</a></p>` : ''}
+        ${entry.ticketUrl && entry.url ? `<p class="small"><a rel="noopener" target="_blank" href="${escapeHtml(entry.url)}">Voir sur ${escapeHtml(entry.source)}</a></p>` : ''}
         <p class="small" style="color: var(--card-muted);">Source : ${escapeHtml(entry.source)}</p>
       </article>
     </main>

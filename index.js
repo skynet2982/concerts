@@ -443,6 +443,18 @@ async function fetchLaCabane() {
 const WAYBACK_CDX_URL = 'https://web.archive.org/cdx/search/cdx?url=toulouse.concerts-metal.com&output=json&filter=statuscode:200&limit=-1';
 const CONCERTS_METAL_EVENT_SPLIT = '<div itemscope itemtype="https://schema.org/MusicEvent">';
 
+// Fetched via web.archive.org's "id_" (identical) mode, which is documented
+// to serve the exact original bytes with no toolbar/link rewriting — but
+// defensively strip a wayback prefix anyway in case any link slips through
+// rewritten (e.g. "https://web.archive.org/web/20251126041523/https://
+// www.concerts-metal.com/..." instead of the real URL), since a link into
+// this repo's own generated pages pointing back into an archive.org
+// timestamp would be a confusing dead end for anyone clicking it.
+function stripWaybackPrefix(url) {
+  if (!url) return url;
+  return url.replace(/^https?:\/\/web\.archive\.org\/web\/\d+[a-z_]*\//, '');
+}
+
 function parseConcertsMetalBlock(block) {
   const names = [...block.matchAll(/<meta itemprop="name" content="([^"]*)"/g)].map((m) => he.decode(m[1]));
   const commune = block.match(/<meta itemprop="addressLocality" content="([^"]*)"/);
@@ -451,7 +463,7 @@ function parseConcertsMetalBlock(block) {
   if (!names.length || !dateStart) return null;
 
   const bands = [...block.matchAll(/<b>([^<]*)<\/b>\s*<i>([^<]*)<\/i>/g)].map((m) => ({ name: he.decode(m[1]) }));
-  const hrefs = [...block.matchAll(/href="([^"]*)"/g)].map((m) => m[1]);
+  const hrefs = [...block.matchAll(/href="([^"]*)"/g)].map((m) => stripWaybackPrefix(m[1]));
   const detailUrl = hrefs.find((h) => h.includes('concerts-metal.com/concert')) || null;
   const ticketUrl = hrefs.find((h) => h !== detailUrl && !h.includes('facebook.com')) || null;
 
