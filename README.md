@@ -109,8 +109,12 @@ Le site se reconstruit tout seul toutes les heures via GitHub Actions (voir
   filtre, déduplique, persiste l'historique, génère les pages HTML.
 - `templates.js` — gabarits HTML (page de liste, carte concert, fiche
   concert).
-- `dist/styles.css` — la seule partie de `dist/` versionnée (le reste est
-  généré à chaque build).
+- `dist/styles.css`, `dist/manifest.json`, `dist/icons/` — les seules
+  parties de `dist/` versionnées (le reste est généré à chaque build). Le
+  site est une PWA installable : `manifest.json` référence les icônes dans
+  `dist/icons/` (générées une fois depuis `assets/icon.svg` et
+  `assets/icon-maskable.svg` — logo à base de l'emoji 🤘 — pas régénérées
+  au build, comme `styles.css`).
 
 ## Développement local
 
