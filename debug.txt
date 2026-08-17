@@ -1,4 +1,4 @@
-2026-08-17T19:25:24.976Z
+2026-08-17T20:22:21.390Z
 Concerts-Metal.com (archive): Error: HTTP 498 for https://web.archive.org/cdx/search/cdx?url=toulouse.concerts-metal.com&output=json&filter=statuscode:200&limit=-1 — body: <html>
 <head><title>404 Not Found</title></head>
 <body>
@@ -14,12 +14,4 @@ Concerts-Metal.com (archive): Error: HTTP 498 for https://web.archive.org/cdx/se
     at async fetchJson (/home/runner/work/concerts/concerts/index.js:82:21)
     at async fetchConcertsMetalArchive (/home/runner/work/concerts/concerts/index.js:493:15)
     at async Promise.all (index 7)
-    at async /home/runner/work/concerts/concerts/index.js:680:19
-
-Zénith Toulouse Métropole: TypeError: fetch failed
-    at node:internal/deps/undici/undici:15157:13
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async fetchText (/home/runner/work/concerts/concerts/index.js:70:15)
-    at async fetchZenith (/home/runner/work/concerts/concerts/index.js:513:16)
-    at async Promise.all (index 6)
     at async /home/runner/work/concerts/concerts/index.js:680:19
