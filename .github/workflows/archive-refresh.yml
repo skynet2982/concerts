@@ -14,6 +14,8 @@ jobs:
           # so this doesn't wait for or verify success — the main hourly
           # build just reads whatever's newest in the Wayback CDX index
           # whenever it next runs, with no coupling to this job's outcome.
-          curl -s -o /dev/null -w "HTTP %{http_code}\n" \
-            -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36" \
-            "https://web.archive.org/save/https://toulouse.concerts-metal.com/"
+          for host in toulouse.concerts-metal.com bretagne.concerts-metal.com; do
+            curl -s -o /dev/null -w "$host: HTTP %{http_code}\n" \
+              -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36" \
+              "https://web.archive.org/save/https://$host/"
+          done

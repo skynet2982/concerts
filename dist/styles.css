@@ -151,6 +151,21 @@ body {
   color: var(--body-fg);
 }
 
+.selector-row {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  margin-bottom: .75rem;
+}
+
+.selector-label {
+  font-size: .78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--card-muted);
+}
+
 .category-switch {
   display: inline-flex;
   gap: .25rem;
@@ -160,6 +175,8 @@ body {
   border: 1px solid var(--card-border);
   border-radius: 999px;
 }
+
+.selector-row .category-switch { margin-bottom: 0; }
 
 .category-btn {
   padding: .45rem 1.1rem;

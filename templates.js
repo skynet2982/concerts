@@ -22,7 +22,13 @@ function displayDateRange(dateStart, dateEnd) {
   return `Du ${start} au ${end}`;
 }
 
-module.exports.document = function (body, { basePrefix = './', switchLinks = [], activeCategory } = {}) {
+module.exports.document = function (body, { basePrefix = './', switchLinks = [], activeCategory, cityLinks = [], activeCity } = {}) {
+  const cityHtml = cityLinks.length > 1 ? `<div class="selector-row">
+    <span class="selector-label">Ville</span>
+    <div class="category-switch">
+      ${cityLinks.map((l) => `<a class="category-btn${l.slug === activeCity ? ' is-active' : ''}" href="${l.href}">${l.label}</a>`).join('')}
+    </div>
+  </div>` : '';
   const switchHtml = switchLinks.length > 1 ? `<div class="category-switch">
     ${switchLinks.map((l) => `<a class="category-btn${l.slug === activeCategory ? ' is-active' : ''}" href="${l.href}">${l.label}</a>`).join('')}
   </div>` : '';
@@ -55,6 +61,7 @@ module.exports.document = function (body, { basePrefix = './', switchLinks = [],
             <strong>Dernière mise à jour</strong>: ${new Date().toLocaleString("fr-FR", { timeZone: "Europe/Paris" })}
           </div>
         </div>
+        ${cityHtml}
         ${switchHtml}
         ${body}
       </div>
@@ -96,7 +103,7 @@ module.exports.eventPage = function (entry) {
   </head>
   <body>
     <main class="container mb-3" style="max-width: 700px;">
-      <p style="margin-top: 1rem;"><a href="../index.html">&larr; Retour aux concerts</a></p>
+      <p style="margin-top: 1rem;"><a href="${entry.backHref}">&larr; Retour aux concerts</a></p>
       <article>
         ${dateBadge(entry.dateStart)}
         <h1 style="margin-top: .75rem;">${escapeHtml(entry.title)}</h1>

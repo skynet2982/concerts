@@ -1,6 +1,7 @@
 # Concerts Metal Toulouse
 
-Site statique listant les prochains concerts metal, hardcore et punk à Toulouse.
+Site statique listant les prochains concerts metal, hardcore et punk à
+Toulouse et Rennes.
 
 **En ligne :** https://skynet2982.github.io/concerts/
 
@@ -9,9 +10,19 @@ Site statique listant les prochains concerts metal, hardcore et punk à Toulouse
 Le site se reconstruit tout seul toutes les heures via GitHub Actions (voir
 `.github/workflows/build.yml`) et se déploie sur la branche `gh-pages`.
 
-- **Sources de données** (huit, fusionnées et dédupliquées — voir plus bas ;
-  en cas de doublon, la source la plus précisément taguée gagne, dans l'ordre
-  du tableau `SOURCES` dans `index.js`) :
+- **Plusieurs villes** : un sélecteur "Ville" au-dessus des onglets
+  À venir/Historique bascule entre Toulouse (racine du site, ville par
+  défaut) et Rennes (`/rennes/`). Chaque ville a son propre jeu de sources
+  dans `index.js` (tableau `CITIES`) — rien n'est mutualisé entre les deux
+  au-delà du *type* de source (JDS.fr, ConcertAndCo.com,
+  concerts-metal.com archivé), les salles/programmateurs locaux sont par
+  nature propres à chaque ville. Le dédoublonnage (voir plus bas) est
+  scopé par ville : même groupe + même date sur deux villes différentes
+  n'est jamais considéré comme un doublon.
+
+- **Sources de données pour Toulouse** (huit, fusionnées et dédupliquées —
+  voir plus bas ; en cas de doublon, la source la plus précisément taguée
+  gagne, dans l'ordre de son entrée dans `CITIES` dans `index.js`) :
   1. La catégorie ["Rock" de JDS.fr pour Toulouse](https://www.jds.fr/toulouse/agenda/rock-111_B) —
      JSON-LD `schema.org/MusicEvent` (lieu, adresse, GPS, tarif, billetterie).
      Pas exclusivement metal (blues, rock FM, tribute bands…), filtrée par
@@ -65,6 +76,30 @@ Le site se reconstruit tout seul toutes les heures via GitHub Actions (voir
      mais s'est avérée avoir abouti quelques heures plus tard — la source
      est passée de 5-6 concerts (vieux instantané de novembre 2025) à 36.
 
+- **Sources de données pour Rennes** (trois — c'est le même point de départ
+  que Toulouse à son lancement, avant les ajouts progressifs de salles
+  locales) :
+  1. La catégorie ["Rock" de JDS.fr pour Rennes](https://www.jds.fr/rennes/agenda/rock-111_B) —
+     même mécanisme que pour Toulouse (JSON-LD, filtré par `METAL_RE`).
+     Couvre déjà indirectement Le Liberté et L'Étage, les deux salles
+     rennaises de référence pour le metal/hardcore.
+  2. La catégorie ["Metal-Hardcore-Hard Rock" de ConcertAndCo.com pour la
+     Bretagne](https://www.concertandco.com/region-style/bretagne/metal-hardcore-hard-rock/billet-concert-2-MID.htm) —
+     même source que pour Toulouse, région changée.
+  3. `bretagne.concerts-metal.com`, via la Wayback Machine — même mécanisme
+     que pour Toulouse (voir plus haut) ; concerts-metal.com n'a pas de
+     sous-domaine dédié à Rennes, `bretagne` est son découpage régional
+     (le sous-domaine `toulouse`, lui aussi, couvre en réalité tout
+     Midi-Pyrénées, pas seulement la ville). Rafraîchie par le même
+     workflow hebdomadaire que Toulouse.
+
+  Salle évaluée et écartée pour Rennes :
+  - **L'Ubu** (`ubu-rennes.com`) : programmation chargée entièrement côté
+    client (routeur JS en hashbang, aucune donnée dans le HTML statique,
+    aucune API `wp-json` exploitable trouvée) — même problème que Le Rex
+    pour Toulouse. Pas grave : ses concerts remontent en grande partie via
+    JDS.fr de toute façon.
+
 - **Déduplication inter-sources** : deux sites reformulent rarement un même
   concert à l'identique (line-up complet vs. tête d'affiche seule, ordre des
   mots différent…), donc la clé de dédoublonnage n'est pas le titre exact
@@ -105,8 +140,9 @@ Le site se reconstruit tout seul toutes les heures via GitHub Actions (voir
 
 ## Structure
 
-- `index.js` — script de build : récupère les données des huit sources,
-  filtre, déduplique, persiste l'historique, génère les pages HTML.
+- `index.js` — script de build : récupère les données de chaque ville
+  (tableau `CITIES`), filtre, déduplique, persiste l'historique, génère
+  les pages HTML de chaque ville.
 - `templates.js` — gabarits HTML (page de liste, carte concert, fiche
   concert).
 - `dist/styles.css`, `dist/manifest.json`, `dist/icons/` — les seules
@@ -139,7 +175,11 @@ stabiliser sur la combinaison actuelle :
    trouvées en cherchant des alternatives proches de concerts-metal.com.
 6. + La Cabane et Zénith Toulouse Métropole — branchées en prévision de
    concerts metal futurs, même si elles n'en ont aucun là tout de suite.
-7. + concerts-metal.com via la Wayback Machine (actuel) — pas d'accès
-   direct possible (voir plus bas), mais web.archive.org n'a pas la même
-   protection que le site lui-même. Voir la liste complète des sources
-   ci-dessus, y compris celles évaluées et écartées.
+7. + concerts-metal.com via la Wayback Machine — pas d'accès direct
+   possible (voir plus haut), mais web.archive.org n'a pas la même
+   protection que le site lui-même.
+8. + ville de Rennes (actuel) — même principe que Toulouse, avec son
+   propre jeu de sources (JDS.fr, ConcertAndCo.com, concerts-metal.com
+   archivé) puisque les salles/programmateurs locaux ne se recoupent pas
+   d'une ville à l'autre. Voir la liste complète des sources ci-dessus,
+   par ville, y compris celles évaluées et écartées.

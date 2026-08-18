@@ -18,6 +18,7 @@ const CATEGORIES = [
   { slug: 'historique', label: 'Historique' },
 ];
 const PRIMARY_CATEGORY = CATEGORIES[0].slug;
+const DEFAULT_CITY = 'toulouse';
 
 fs.mkdirSync('./dist', { recursive: true });
 fs.mkdirSync(EVENTS_DIR, { recursive: true });
@@ -121,7 +122,6 @@ function formatPrice(offers, isFree) {
 // ticket link. "Rock" isn't metal-exclusive (it also carries blues, tribute
 // bands, arena pop-rock), so results are filtered through a metal/hardcore/
 // punk keyword match afterwards.
-const JDS_ROCK_URL = 'https://www.jds.fr/toulouse/agenda/rock-111_B';
 const MAX_PAGES = 6;
 
 const METAL_RE = /\bmetal\b|hardcore|punk|thrash|deathcore|metalcore|grindcore|\bdoom\b|\bgrind\b|\bstoner\b|\bsludge\b|black.?metal|death.?metal|power.?metal|folk.?metal|gothic.?metal|nu.?metal|hard.?rock/i;
@@ -130,7 +130,7 @@ function looksLikeMetal(text) {
   return METAL_RE.test(text);
 }
 
-function parseJdsEvent(it) {
+function parseJdsEvent(it, idPrefix) {
   if (!it || it['@type'] !== 'MusicEvent' || !it.startDate) return null;
   const title = he.decode(it.name || '');
   const performer = Array.isArray(it.performer) ? it.performer : (it.performer ? [it.performer] : []);
@@ -154,7 +154,7 @@ function parseJdsEvent(it) {
   const offer = Array.isArray(it.offers) ? it.offers[0] : it.offers;
 
   return {
-    id: `jds:${normalizeForKey([dateStart, venue, title].join('|'))}`,
+    id: `${idPrefix}:${normalizeForKey([dateStart, venue, title].join('|'))}`,
     title,
     bands,
     description,
@@ -172,11 +172,12 @@ function parseJdsEvent(it) {
   };
 }
 
-async function fetchJdsRock() {
+async function fetchJdsRock(citySlug, idPrefix) {
+  const baseUrl = `https://www.jds.fr/${citySlug}/agenda/rock-111_B`;
   const events = [];
   const seenIds = new Set();
   for (let page = 1; page <= MAX_PAGES; page++) {
-    const url = page === 1 ? JDS_ROCK_URL : `${JDS_ROCK_URL}?page=${page}`;
+    const url = page === 1 ? baseUrl : `${baseUrl}?page=${page}`;
     const html = await fetchText(url);
     const scripts = [...html.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/gs)].map((m) => m[1]);
     let pageEventCount = 0;
@@ -191,7 +192,7 @@ async function fetchJdsRock() {
       for (const it of items) {
         if (!it || it['@type'] !== 'MusicEvent') continue;
         pageEventCount++;
-        const ev = parseJdsEvent(it);
+        const ev = parseJdsEvent(it, idPrefix);
         if (!ev || seenIds.has(ev.id)) continue;
         seenIds.add(ev.id);
         events.push(ev);
@@ -208,7 +209,6 @@ async function fetchJdsRock() {
 // outside Toulouse city, and isn't behind Cloudflare either. Volume is
 // modest (a handful of listings at a time) so it supplements JDS.fr rather
 // than replacing it. No JSON-LD here — events are parsed out of plain HTML.
-const CONCERTANDCO_URL = 'https://www.concertandco.com/region-style/midi-pyrenees-languedoc-roussillon/metal-hardcore-hard-rock/billet-concert-2-MID.htm';
 const CONCERTANDCO_EVENT_RE = /<a name=(\d{4}-\d{2}-\d{2})>.*?<h3 class="libelle bbox">(.*?)<span class=genre>(.*?)<\/span>\s*<\/h3>(.*?)<\/div>\s*<\/div>\s*<\/div>/gs;
 
 function splitVenueCommune(rawVenue) {
@@ -217,7 +217,7 @@ function splitVenueCommune(rawVenue) {
   return m ? { venue: m[1].trim(), commune: m[2].trim() } : { venue: rawVenue.trim(), commune: '' };
 }
 
-function parseConcertAndCoBlock(dateStart, titleRaw, genreBlock, rest) {
+function parseConcertAndCoBlock(dateStart, titleRaw, genreBlock, rest, idPrefix, sourceUrl) {
   const title = he.decode(titleRaw).trim();
   const genres = [...new Set([...genreBlock.matchAll(/icon-music-([a-z]+)/g)].map((m) => m[1]))]
     .map((g) => g.charAt(0).toUpperCase() + g.slice(1));
@@ -228,7 +228,7 @@ function parseConcertAndCoBlock(dateStart, titleRaw, genreBlock, rest) {
   const descMatch = rest.match(/class=txt>(.*?)<\/span>/s);
 
   return {
-    id: `cac:${normalizeForKey([dateStart, venue, title].join('|'))}`,
+    id: `${idPrefix}:${normalizeForKey([dateStart, venue, title].join('|'))}`,
     title,
     bands: [],
     description: [genres.length ? `Genres : ${genres.join(', ')}` : '', descMatch ? he.decode(descMatch[1].replace(/<br\s*\/?>/g, '\n')) : '']
@@ -242,18 +242,19 @@ function parseConcertAndCoBlock(dateStart, titleRaw, genreBlock, rest) {
     dateEnd: dateStart,
     price: priceMatch ? he.decode(priceMatch[1]).trim() : null,
     ticketUrl: ticketMatch ? ticketMatch[1] : null,
-    url: `${CONCERTANDCO_URL}#${dateStart}`,
+    url: `${sourceUrl}#${dateStart}`,
     source: 'ConcertAndCo.com',
   };
 }
 
-async function fetchConcertAndCo() {
-  const html = await fetchText(CONCERTANDCO_URL);
+async function fetchConcertAndCo(regionSlug, idPrefix) {
+  const url = `https://www.concertandco.com/region-style/${regionSlug}/metal-hardcore-hard-rock/billet-concert-2-MID.htm`;
+  const html = await fetchText(url);
   const events = [];
   const seenIds = new Set();
   for (const m of html.matchAll(CONCERTANDCO_EVENT_RE)) {
     const [, dateStart, titleRaw, genreBlock, rest] = m;
-    const ev = parseConcertAndCoBlock(dateStart, titleRaw, genreBlock, rest);
+    const ev = parseConcertAndCoBlock(dateStart, titleRaw, genreBlock, rest, idPrefix, url);
     if (seenIds.has(ev.id)) continue;
     seenIds.add(ev.id);
     events.push(ev);
@@ -440,7 +441,6 @@ async function fetchLaCabane() {
 // Internet Archive ever succeeds at a fresher crawl (their own schedule,
 // not something this script controls), this source picks it up for free
 // on the next build with no code change — same CDX query, latest wins.
-const WAYBACK_CDX_URL = 'https://web.archive.org/cdx/search/cdx?url=toulouse.concerts-metal.com&output=json&filter=statuscode:200&limit=-1';
 const CONCERTS_METAL_EVENT_SPLIT = '<div itemscope itemtype="https://schema.org/MusicEvent">';
 
 // Fetched via web.archive.org's "id_" (identical) mode, which is documented
@@ -455,7 +455,7 @@ function stripWaybackPrefix(url) {
   return url.replace(/^https?:\/\/web\.archive\.org\/web\/\d+[a-z_]*\//, '');
 }
 
-function parseConcertsMetalBlock(block) {
+function parseConcertsMetalBlock(block, idPrefix, sourceName) {
   const names = [...block.matchAll(/<meta itemprop="name" content="([^"]*)"/g)].map((m) => he.decode(m[1]));
   const commune = block.match(/<meta itemprop="addressLocality" content="([^"]*)"/);
   const dateStart = block.match(/<meta itemprop="startDate" content="([^"]*)"/);
@@ -471,7 +471,7 @@ function parseConcertsMetalBlock(block) {
   const title = bands.length ? bands.map((b) => b.name).join(' + ') : (names[1] || names[0]);
 
   return {
-    id: `archive:${normalizeForKey([dateStart[1], venue, title].join('|'))}`,
+    id: `${idPrefix}:${normalizeForKey([dateStart[1], venue, title].join('|'))}`,
     title,
     bands,
     description: '',
@@ -485,18 +485,19 @@ function parseConcertsMetalBlock(block) {
     price: null,
     ticketUrl,
     url: detailUrl,
-    source: 'Concerts-Metal.com (archive)',
+    source: sourceName,
   };
 }
 
-async function fetchConcertsMetalArchive() {
-  const cdx = await fetchJson(WAYBACK_CDX_URL);
+async function fetchConcertsMetalArchive(hostname, idPrefix, sourceName) {
+  const cdxUrl = `https://web.archive.org/cdx/search/cdx?url=${hostname}&output=json&filter=statuscode:200&limit=-1`;
+  const cdx = await fetchJson(cdxUrl);
   if (cdx.length < 2) return []; // header row only, no snapshot on file
   const [, timestamp] = cdx[1];
-  const html = await fetchText(`https://web.archive.org/web/${timestamp}id_/https://toulouse.concerts-metal.com/`);
+  const html = await fetchText(`https://web.archive.org/web/${timestamp}id_/https://${hostname}/`);
   const today = todayISO();
   return html.split(CONCERTS_METAL_EVENT_SPLIT).slice(1)
-    .map(parseConcertsMetalBlock)
+    .map((block) => parseConcertsMetalBlock(block, idPrefix, sourceName))
     .filter((ev) => ev && ev.dateStart >= today);
 }
 
@@ -625,31 +626,35 @@ function paginate(items) {
   return pages;
 }
 
+function cityDir(citySlug) {
+  return citySlug === DEFAULT_CITY ? '' : `${citySlug}/`;
+}
+
 function categoryDir(slug) {
   return slug === PRIMARY_CATEGORY ? '' : `${slug}/`;
 }
 
-function pagePath(slug, pageNum) {
-  const dir = categoryDir(slug);
+function pagePath(citySlug, categorySlug, pageNum) {
+  const dir = cityDir(citySlug) + categoryDir(categorySlug);
   return pageNum === 1 ? `${dir}index.html` : `${dir}page/${pageNum}.html`;
 }
 
-function rootPrefixFor(slug, pageNum) {
-  const depth = (slug === PRIMARY_CATEGORY ? 0 : 1) + (pageNum === 1 ? 0 : 1);
+function rootPrefixFor(citySlug, categorySlug, pageNum) {
+  const depth = (citySlug === DEFAULT_CITY ? 0 : 1) + (categorySlug === PRIMARY_CATEGORY ? 0 : 1) + (pageNum === 1 ? 0 : 1);
   return '../'.repeat(depth);
 }
 
-function pageHref(targetPage, currentSlug, currentPage) {
-  return rootPrefixFor(currentSlug, currentPage) + pagePath(currentSlug, targetPage);
+function pageHref(citySlug, targetPage, currentCategory, currentPage) {
+  return rootPrefixFor(citySlug, currentCategory, currentPage) + pagePath(citySlug, currentCategory, targetPage);
 }
 
-function paginationNav(pageNum, totalPages, slug) {
+function paginationNav(citySlug, pageNum, totalPages, categorySlug) {
   if (totalPages <= 1) return '';
   const prev = pageNum > 1
-    ? `<a class="page-link" href="${pageHref(pageNum - 1, slug, pageNum)}">&larr; Plus tôt</a>`
+    ? `<a class="page-link" href="${pageHref(citySlug, pageNum - 1, categorySlug, pageNum)}">&larr; Plus tôt</a>`
     : `<span class="page-link is-disabled">&larr; Plus tôt</span>`;
   const next = pageNum < totalPages
-    ? `<a class="page-link" href="${pageHref(pageNum + 1, slug, pageNum)}">Plus tard &rarr;</a>`
+    ? `<a class="page-link" href="${pageHref(citySlug, pageNum + 1, categorySlug, pageNum)}">Plus tard &rarr;</a>`
     : `<span class="page-link is-disabled">Plus tard &rarr;</span>`;
   return `<nav class="pagination" aria-label="Pagination">
     ${prev}
@@ -658,58 +663,94 @@ function paginationNav(pageNum, totalPages, slug) {
   </nav>`;
 }
 
+// Each city has its own independent set of sources — venues/promoters are
+// naturally local, so nothing here is shared between cities except the
+// three source *types* (JDS.fr's per-city agenda, ConcertAndCo's per-region
+// curated category, and a concerts-metal.com regional subdomain archived
+// via Wayback). Prefixes are globally unique across all cities so a single
+// flat `events` map and a single dedup pass can serve every city at once.
+const CITIES = [
+  {
+    slug: 'toulouse',
+    label: 'Toulouse',
+    // Listed in dedup priority order: when the same concert legitimately
+    // appears on two sites, whichever is fetched first here wins.
+    sources: [
+      { prefix: 'jds', name: 'JDS.fr', fetcher: () => fetchJdsRock('toulouse', 'jds') },
+      { prefix: 'metronum', name: 'Le Metronum', fetcher: fetchMetronum },
+      { prefix: 'interference', name: 'Interférence', fetcher: fetchInterference },
+      { prefix: 'cac', name: 'ConcertAndCo.com', fetcher: () => fetchConcertAndCo('midi-pyrenees-languedoc-roussillon', 'cac') },
+      { prefix: 'noiser', name: 'Noiser', fetcher: fetchNoiser },
+      { prefix: 'lacabane', name: 'La Cabane', fetcher: fetchLaCabane },
+      { prefix: 'zenith', name: 'Zénith Toulouse Métropole', fetcher: fetchZenith },
+      // Last priority: stale archived data should lose to any live source
+      // that lists the same show.
+      { prefix: 'archive', name: 'Concerts-Metal.com (archive)', fetcher: () => fetchConcertsMetalArchive('toulouse.concerts-metal.com', 'archive', 'Concerts-Metal.com (archive)') },
+    ],
+  },
+  {
+    slug: 'rennes',
+    label: 'Rennes',
+    // L'Ubu (a real Rennes rock/metal venue) was checked and dropped: its
+    // programmation page renders entirely client-side (a hashbang JS
+    // router, no data in the static HTML, no discoverable API) — same dead
+    // end as Le Rex's own site was for Toulouse. Le Liberté / L'Étage (the
+    // other reference metal/hardcore venue) already surfaces through
+    // JDS.fr's own listing below, so it isn't missing coverage.
+    sources: [
+      { prefix: 'jds-rennes', name: 'JDS.fr', fetcher: () => fetchJdsRock('rennes', 'jds-rennes') },
+      { prefix: 'cac-rennes', name: 'ConcertAndCo.com', fetcher: () => fetchConcertAndCo('bretagne', 'cac-rennes') },
+      // concerts-metal.com has no dedicated "rennes" subdomain — "bretagne"
+      // is this site's regional listing (same pattern as Toulouse's own
+      // subdomain actually covering all of Midi-Pyrénées, not just the city).
+      { prefix: 'archive-rennes', name: 'Concerts-Metal.com (archive)', fetcher: () => fetchConcertsMetalArchive('bretagne.concerts-metal.com', 'archive-rennes', 'Concerts-Metal.com (archive)') },
+    ],
+  },
+];
+
 (async () => {
   const state = loadState();
 
-  // Listed in dedup priority order: when the same concert legitimately
-  // appears on two sites, whichever is fetched first here wins.
-  const SOURCES = [
-    { prefix: 'jds', name: 'JDS.fr', fetcher: fetchJdsRock },
-    { prefix: 'metronum', name: 'Le Metronum', fetcher: fetchMetronum },
-    { prefix: 'interference', name: 'Interférence', fetcher: fetchInterference },
-    { prefix: 'cac', name: 'ConcertAndCo.com', fetcher: fetchConcertAndCo },
-    { prefix: 'noiser', name: 'Noiser', fetcher: fetchNoiser },
-    { prefix: 'lacabane', name: 'La Cabane', fetcher: fetchLaCabane },
-    { prefix: 'zenith', name: 'Zénith Toulouse Métropole', fetcher: fetchZenith },
-    // Last priority: stale archived data should lose to any live source
-    // that lists the same show.
-    { prefix: 'archive', name: 'Concerts-Metal.com (archive)', fetcher: fetchConcertsMetalArchive },
-  ];
-
   const debugLines = [];
-  const results = await Promise.all(SOURCES.map(({ name, fetcher }) => fetcher().catch((err) => {
-    console.warn(`${name} fetch failed: ${err.message}`);
-    debugLines.push(`${name}: ${err.stack || err.message}`);
-    return [];
-  })));
+  const cityFreshEvents = {};
+  for (const city of CITIES) {
+    const results = await Promise.all(city.sources.map(({ name, fetcher }) => fetcher().catch((err) => {
+      console.warn(`[${city.label}] ${name} fetch failed: ${err.message}`);
+      debugLines.push(`[${city.label}] ${name}: ${err.stack || err.message}`);
+      return [];
+    })));
+    console.log(`${city.label}: ${city.sources.map((s, i) => `${results[i].length} from ${s.name}`).join(', ')}`);
+    cityFreshEvents[city.slug] = results.flat().map((ev) => ({ ...ev, city: city.slug }));
+  }
   if (debugLines.length) createFile('./dist/debug.txt', `${new Date().toISOString()}\n${debugLines.join('\n\n')}\n`);
-  console.log(SOURCES.map((s, i) => `${results[i].length} from ${s.name}`).join(', '));
 
   // Merge into persisted history: upsert by id so events survive even after
   // a source stops listing them. Drop history from a source generation this
   // repo has since moved off of (this repo has already been through two
   // full source swaps — generic open data, then concerts-metal.com, both
   // abandoned — and neither's leftovers belong in the current archive).
-  const activePrefixes = SOURCES.map((s) => `${s.prefix}:`);
+  const activePrefixes = CITIES.flatMap((c) => c.sources.map((s) => `${s.prefix}:`));
   const events = Object.fromEntries(Object.entries(state.events).filter(([id]) => activePrefixes.some((p) => id.startsWith(p))));
-  for (const ev of results.flat()) {
-    events[ev.id] = { ...ev, slug: slugFor(ev.id) };
+  for (const city of CITIES) {
+    for (const ev of cityFreshEvents[city.slug]) {
+      events[ev.id] = { ...ev, slug: slugFor(ev.id) };
+    }
   }
 
-  // Dedup across sources: same date + any shared band name => same show.
-  // Applied to the *whole* merged set (persisted + fresh), not just this
-  // run's fresh fetch — otherwise a duplicate that made it into history on
-  // an earlier run (or before this dedup logic existed) never gets cleaned
-  // up, since upserting by id alone can't tell that two different ids are
-  // the same real concert. Priority follows SOURCES order regardless of
-  // which one happened to be inserted first.
+  // Dedup across sources: same city + date + any shared band name => same
+  // show. Applied to the *whole* merged set (persisted + fresh), not just
+  // this run's fresh fetch — otherwise a duplicate that made it into
+  // history on an earlier run (or before this dedup logic existed) never
+  // gets cleaned up, since upserting by id alone can't tell that two
+  // different ids are the same real concert. Priority follows each city's
+  // sources order regardless of which one happened to be inserted first.
   const sourcePriority = (id) => activePrefixes.findIndex((p) => id.startsWith(p));
   const orderedIds = Object.keys(events).sort((a, b) => sourcePriority(a) - sourcePriority(b));
   const seenBandDateKeys = new Set();
   for (const id of orderedIds) {
     const ev = events[id];
-    const keys = bandTokensOf(ev).map((token) => `${ev.dateStart}|${token}`);
-    if (keys.length === 0) keys.push(`${ev.dateStart}|${normalizeForKey(ev.title)}`);
+    const keys = bandTokensOf(ev).map((token) => `${ev.city}|${ev.dateStart}|${token}`);
+    if (keys.length === 0) keys.push(`${ev.city}|${ev.dateStart}|${normalizeForKey(ev.title)}`);
     if (keys.some((k) => seenBandDateKeys.has(k))) {
       delete events[id];
       continue;
@@ -718,57 +759,71 @@ function paginationNav(pageNum, totalPages, slug) {
   }
 
   const today = todayISO();
-  const all = Object.values(events);
   // Multi-day events already in progress (dateStart in the past, dateEnd
   // still ahead) should sort by how much of their run is left, not by
   // their original start date — otherwise an ongoing festival permanently
   // pins itself above one-off concerts starting tomorrow.
   const upcomingSortKey = (e) => (e.dateStart < today ? today : e.dateStart);
-  const upcoming = all
-    .filter((e) => (e.dateEnd || e.dateStart) >= today)
-    .sort((a, b) => upcomingSortKey(a).localeCompare(upcomingSortKey(b)))
-    .slice(0, MAX_PER_CATEGORY)
-    .map((e) => ({ ...e, cardDate: upcomingSortKey(e) }));
-  const past = all
-    .filter((e) => (e.dateEnd || e.dateStart) < today)
-    .sort((a, b) => b.dateStart.localeCompare(a.dateStart))
-    .slice(0, MAX_PER_CATEGORY);
+
+  const keepIds = new Set();
+  const cityByCategory = {};
+  for (const city of CITIES) {
+    const all = Object.values(events).filter((e) => e.city === city.slug);
+    const upcoming = all
+      .filter((e) => (e.dateEnd || e.dateStart) >= today)
+      .sort((a, b) => upcomingSortKey(a).localeCompare(upcomingSortKey(b)))
+      .slice(0, MAX_PER_CATEGORY)
+      .map((e) => ({ ...e, cardDate: upcomingSortKey(e) }));
+    const past = all
+      .filter((e) => (e.dateEnd || e.dateStart) < today)
+      .sort((a, b) => b.dateStart.localeCompare(a.dateStart))
+      .slice(0, MAX_PER_CATEGORY);
+    cityByCategory[city.slug] = { 'a-venir': upcoming, historique: past };
+    for (const e of [...upcoming, ...past]) keepIds.add(e.id);
+  }
 
   // Only persist events still reachable from a listing page, so
   // dist/history.json (and the repo it lives in) doesn't grow forever.
-  const keepIds = new Set([...upcoming, ...past].map((e) => e.id));
   const trimmedEvents = Object.fromEntries(Object.entries(events).filter(([id]) => keepIds.has(id)));
   createFile(HISTORY_FILE, JSON.stringify({ events: trimmedEvents }));
 
   for (const ev of Object.values(trimmedEvents)) {
-    createFile(`${EVENTS_DIR}/${ev.slug}.html`, templates.eventPage(ev));
+    createFile(`${EVENTS_DIR}/${ev.slug}.html`, templates.eventPage({ ...ev, backHref: `../${cityDir(ev.city)}index.html` }));
   }
 
-  const byCategory = { 'a-venir': upcoming, historique: past };
+  const cityLinksBase = CITIES.map((c) => ({ slug: c.slug, label: c.label }));
 
-  for (const category of CATEGORIES) {
-    const pages = paginate(byCategory[category.slug]);
-    pages.forEach((pageItems, i) => {
-      const pageNum = i + 1;
-      const rootPrefix = rootPrefixFor(category.slug, pageNum);
-      const switchLinks = CATEGORIES.map((c) => ({
-        slug: c.slug,
-        label: c.label,
-        href: rootPrefix + pagePath(c.slug, 1),
-      }));
-      let body = `<section class="news-section">`;
-      if (pageItems.length === 0) {
-        body += `<p class="empty-state">Aucun concert ${category.slug === 'a-venir' ? 'à venir' : 'passé'} pour le moment.</p>`;
-      } else {
-        body += '<div class="news-grid">';
-        body += pageItems.map((entry) => templates.eventCardTemplate(entry, rootPrefix)).join('');
-        body += '</div>';
-      }
-      body += `</section>`;
-      body += paginationNav(pageNum, pages.length, category.slug);
+  for (const city of CITIES) {
+    const byCategory = cityByCategory[city.slug];
+    for (const category of CATEGORIES) {
+      const pages = paginate(byCategory[category.slug]);
+      pages.forEach((pageItems, i) => {
+        const pageNum = i + 1;
+        const rootPrefix = rootPrefixFor(city.slug, category.slug, pageNum);
+        const switchLinks = CATEGORIES.map((c) => ({
+          slug: c.slug,
+          label: c.label,
+          href: rootPrefix + pagePath(city.slug, c.slug, 1),
+        }));
+        const cityLinks = cityLinksBase.map((c) => ({
+          slug: c.slug,
+          label: c.label,
+          href: rootPrefix + pagePath(c.slug, PRIMARY_CATEGORY, 1),
+        }));
+        let body = `<section class="news-section">`;
+        if (pageItems.length === 0) {
+          body += `<p class="empty-state">Aucun concert ${category.slug === 'a-venir' ? 'à venir' : 'passé'} pour le moment.</p>`;
+        } else {
+          body += '<div class="news-grid">';
+          body += pageItems.map((entry) => templates.eventCardTemplate(entry, rootPrefix)).join('');
+          body += '</div>';
+        }
+        body += `</section>`;
+        body += paginationNav(city.slug, pageNum, pages.length, category.slug);
 
-      const html = templates.document(body, { basePrefix: rootPrefix, switchLinks, activeCategory: category.slug });
-      createFile(`./dist/${pagePath(category.slug, pageNum)}`, html);
-    });
+        const html = templates.document(body, { basePrefix: rootPrefix, switchLinks, activeCategory: category.slug, cityLinks, activeCity: city.slug });
+        createFile(`./dist/${pagePath(city.slug, category.slug, pageNum)}`, html);
+      });
+    }
   }
 })();
