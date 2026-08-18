@@ -37,12 +37,12 @@ module.exports.document = function (body, { basePrefix = './', switchLinks = [],
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Concerts metal, hardcore et punk à Toulouse">
+    <meta name="description" content="Concerts metal, hardcore et punk à Toulouse et Rennes">
     <meta name="theme-color" content="#101214">
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A4%98%3C/text%3E%3C/svg%3E">
     <link rel="apple-touch-icon" href="${basePrefix}icons/apple-touch-icon.png">
     <link rel="manifest" href="${basePrefix}manifest.json">
-    <title>Concerts Metal Toulouse</title>
+    <title>Concerts Métal</title>
     <link type="text/css" rel="stylesheet" href="${basePrefix}styles.css" media="all">
   </head>
   <body>
@@ -50,7 +50,7 @@ module.exports.document = function (body, { basePrefix = './', switchLinks = [],
       <header class="bg-dark mb-4">
         <nav class="container navbar navbar-dark">
         <div class="container-fluid">
-          <a href="${basePrefix}index.html"><h1 class="text-light h2 mb-0">🤘 Concerts Metal Toulouse</h1></a>
+          <a href="${basePrefix}index.html"><h1 class="text-light h2 mb-0">🤘 Concerts Métal</h1></a>
         </div>
         </nav>
       </header>
@@ -97,7 +97,7 @@ module.exports.eventPage = function (entry) {
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A4%98%3C/text%3E%3C/svg%3E">
     <link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
     <link rel="manifest" href="../manifest.json">
-    <title>${escapeHtml(entry.title)} — Concerts Metal Toulouse</title>
+    <title>${escapeHtml(entry.title)} — Concerts Métal</title>
     <link type="text/css" rel="stylesheet" href="../styles.css" media="all">
   </head>
   <body>

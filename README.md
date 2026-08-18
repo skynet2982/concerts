@@ -1,4 +1,4 @@
-# Concerts Metal Toulouse
+# Concerts Métal
 
 Site statique listant les prochains concerts metal, hardcore et punk à
 Toulouse et Rennes.
