@@ -24,7 +24,6 @@ function displayDateRange(dateStart, dateEnd) {
 
 module.exports.document = function (body, { basePrefix = './', switchLinks = [], activeCategory, cityLinks = [], activeCity } = {}) {
   const cityHtml = cityLinks.length > 1 ? `<div class="selector-row">
-    <span class="selector-label">Ville</span>
     <div class="category-switch">
       ${cityLinks.map((l) => `<a class="category-btn${l.slug === activeCity ? ' is-active' : ''}" href="${l.href}">${l.label}</a>`).join('')}
     </div>
