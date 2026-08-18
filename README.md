@@ -1,7 +1,7 @@
 # Concerts Métal
 
 Site statique listant les prochains concerts metal, hardcore et punk à
-Toulouse et Rennes.
+Toulouse, Rennes et Lorient.
 
 **En ligne :** https://skynet2982.github.io/concerts/
 
@@ -10,15 +10,26 @@ Toulouse et Rennes.
 Le site se reconstruit tout seul toutes les heures via GitHub Actions (voir
 `.github/workflows/build.yml`) et se déploie sur la branche `gh-pages`.
 
-- **Plusieurs villes** : un sélecteur "Ville" au-dessus des onglets
-  À venir/Historique bascule entre Toulouse (racine du site, ville par
-  défaut) et Rennes (`/rennes/`). Chaque ville a son propre jeu de sources
-  dans `index.js` (tableau `CITIES`) — rien n'est mutualisé entre les deux
-  au-delà du *type* de source (JDS.fr, ConcertAndCo.com,
+- **Plusieurs villes** : un sélecteur au-dessus des onglets À venir/Historique
+  bascule entre Toulouse (racine du site, ville par défaut), Rennes
+  (`/rennes/`) et Lorient (`/lorient/`). Chaque ville a son propre jeu de
+  sources dans `index.js` (tableau `CITIES`) — rien n'est mutualisé entre
+  elles au-delà du *type* de source (JDS.fr, ConcertAndCo.com,
   concerts-metal.com archivé), les salles/programmateurs locaux sont par
   nature propres à chaque ville. Le dédoublonnage (voir plus bas) est
   scopé par ville : même groupe + même date sur deux villes différentes
   n'est jamais considéré comme un doublon.
+
+  Rennes et Lorient partagent leurs deux sources régionales (ConcertAndCo
+  Bretagne, concerts-metal.com archivé sous `bretagne.`) avec toute la
+  Bretagne, pas seulement leur ville — et le classement par région de
+  ConcertAndCo s'est révélé peu fiable (sa page "Bretagne" a un temps
+  affiché des concerts à Nîmes et à Toulouse). Ces deux villes filtrent
+  donc chaque source, JDS.fr compris, strictement sur la commune exacte
+  (`communeFilter` dans `CITIES`) plutôt que de faire confiance au
+  découpage géographique du site source. Toulouse n'a pas ce filtre : ses
+  sources sont soit spécifiques à une seule salle, soit correctement
+  bornées à Midi-Pyrénées / Languedoc-Roussillon.
 
 - **Sources de données pour Toulouse** (huit, fusionnées et dédupliquées —
   voir plus bas ; en cas de doublon, la source la plus précisément taguée
@@ -100,6 +111,29 @@ Le site se reconstruit tout seul toutes les heures via GitHub Actions (voir
     pour Toulouse. Pas grave : ses concerts remontent en grande partie via
     JDS.fr de toute façon.
 
+- **Sources de données pour Lorient** (trois, mêmes sources que Rennes,
+  juste re-filtrées sur la commune de Lorient) :
+  1. La catégorie ["Rock" de JDS.fr pour Lorient](https://www.jds.fr/lorient/agenda/rock-111_B).
+  2. ConcertAndCo.com Bretagne (même requête que pour Rennes).
+  3. `bretagne.concerts-metal.com` via la Wayback Machine (même instantané
+     que pour Rennes).
+
+- **Nettoyage des liens billetterie** : plusieurs sources (JDS.fr,
+  ConcertAndCo.com, l'archive concerts-metal.com) pointent parfois vers un
+  lien d'affiliation Awin (`awin1.com/pclick.php?p=...`) plutôt que
+  directement vers le billettier — le paramètre `p` est un identifiant
+  opaque, pas une URL encodée, donc impossible à décoder sans requête.
+  `resolveAwinTicketUrl` dans `index.js` suit la redirection (juste les
+  en-têtes, sans télécharger la page) et ne garde que la vraie destination,
+  débarrassée des paramètres de tracking (`awc`, `utm_*`…) — ex. le lien
+  Awin de 1000mods à Rennes devient directement
+  `fnacspectacles.com/artist/1000-mods/`. Les liens SeeTickets
+  (`pfd.seetickets.com/?...&redir=<url>`) sont eux résolus sans requête,
+  l'URL réelle étant déjà encodée dans le paramètre `redir`. Un échec de
+  résolution (timeout, etc.) laisse simplement le lien Awin d'origine —
+  toujours cliquable, juste moins propre — et sera retenté au prochain
+  build tant que la source republie l'évènement.
+
 - **Déduplication inter-sources** : deux sites reformulent rarement un même
   concert à l'identique (line-up complet vs. tête d'affiche seule, ordre des
   mots différent…), donc la clé de dédoublonnage n'est pas le titre exact
@@ -137,6 +171,11 @@ Le site se reconstruit tout seul toutes les heures via GitHub Actions (voir
   disparition du site source.
 - Deux onglets : **À venir** (tri par date croissante) et **Historique**
   (concerts passés, tri par date décroissante), tous deux paginés.
+- Deux boutons utilitaires au-dessus du sélecteur de ville : 🔄 recharge la
+  page, 📱 affiche un QR code de la page courante (pas juste l'accueil —
+  utile pour partager directement une page paginée ou une ville) via
+  `dist/qrcode.min.js`, une lib vendorisée (MIT, kazuhikoarase/qrcode-generator)
+  générée entièrement côté client, sans requête réseau ni service tiers.
 
 ## Structure
 
@@ -145,12 +184,12 @@ Le site se reconstruit tout seul toutes les heures via GitHub Actions (voir
   les pages HTML de chaque ville.
 - `templates.js` — gabarits HTML (page de liste, carte concert, fiche
   concert).
-- `dist/styles.css`, `dist/manifest.json`, `dist/icons/` — les seules
-  parties de `dist/` versionnées (le reste est généré à chaque build). Le
-  site est une PWA installable : `manifest.json` référence les icônes dans
-  `dist/icons/` (générées une fois depuis `assets/icon.svg` et
-  `assets/icon-maskable.svg` — logo à base de l'emoji 🤘 — pas régénérées
-  au build, comme `styles.css`).
+- `dist/styles.css`, `dist/manifest.json`, `dist/icons/`, `dist/qrcode.min.js`
+  — les seules parties de `dist/` versionnées (le reste est généré à
+  chaque build). Le site est une PWA installable : `manifest.json`
+  référence les icônes dans `dist/icons/` (générées une fois depuis
+  `assets/icon.svg` et `assets/icon-maskable.svg` — logo à base de
+  l'emoji 🤘 — pas régénérées au build, comme `styles.css`).
 
 ## Développement local
 
@@ -178,8 +217,12 @@ stabiliser sur la combinaison actuelle :
 7. + concerts-metal.com via la Wayback Machine — pas d'accès direct
    possible (voir plus haut), mais web.archive.org n'a pas la même
    protection que le site lui-même.
-8. + ville de Rennes (actuel) — même principe que Toulouse, avec son
-   propre jeu de sources (JDS.fr, ConcertAndCo.com, concerts-metal.com
-   archivé) puisque les salles/programmateurs locaux ne se recoupent pas
-   d'une ville à l'autre. Voir la liste complète des sources ci-dessus,
-   par ville, y compris celles évaluées et écartées.
+8. + ville de Rennes — même principe que Toulouse, avec son propre jeu de
+   sources (JDS.fr, ConcertAndCo.com, concerts-metal.com archivé) puisque
+   les salles/programmateurs locaux ne se recoupent pas d'une ville à
+   l'autre. Voir la liste complète des sources ci-dessus, par ville, y
+   compris celles évaluées et écartées.
+9. + ville de Lorient, filtrage strict par commune pour Rennes/Lorient
+   (leurs sources régionales listaient des concerts ailleurs en Bretagne,
+   voire hors Bretagne), nettoyage des liens billetterie Awin, et boutons
+   rafraîchir/QR code (actuel).

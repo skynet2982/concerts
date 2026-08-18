@@ -101,6 +101,36 @@ function extractTicketUrl(rawUrl) {
   }
 }
 
+// Awin's pclick.php affiliate links (used by several ticketing sources —
+// JDS.fr, ConcertAndCo.com, the concerts-metal.com archive — whenever the
+// underlying platform is Fnac Spectacles/Cdiscount/etc.) carry the real
+// destination only as an opaque product id ("p="), not an embeddable URL
+// like SeeTickets' own redirector, so unlike extractTicketUrl() above this
+// can't be resolved by decoding a query param — it takes an actual request.
+// A manual-redirect fetch is cheap (no body downloaded, just the 302's
+// Location header) and, unlike the destination page itself, awin1.com
+// hasn't been observed blocking automated requests.
+const AWIN_TRACKING_PARAMS = ['affiliate', 'sv1', 'sv_campaign_id', 'awc', 'utm_source', 'utm_campaign', 'utm_medium', 'cid', 'cm_mmc'];
+
+async function resolveAwinTicketUrl(ev) {
+  if (!ev.ticketUrl || !ev.ticketUrl.includes('awin1.com/pclick.php')) return;
+  try {
+    const res = await fetch(ev.ticketUrl, {
+      headers: { 'User-Agent': USER_AGENT },
+      redirect: 'manual',
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    const location = res.headers.get('location');
+    if (!location) return;
+    const resolved = new URL(location);
+    AWIN_TRACKING_PARAMS.forEach((p) => resolved.searchParams.delete(p));
+    ev.ticketUrl = resolved.toString();
+  } catch {
+    // Leave the original awin1.com link in place — still clickable, just
+    // not as clean, and this shouldn't fail the whole build over a link.
+  }
+}
+
 function formatPrice(offers, isFree) {
   if (isFree) return 'Gratuit';
   const o = Array.isArray(offers) ? offers[0] : offers;
@@ -241,7 +271,7 @@ function parseConcertAndCoBlock(dateStart, titleRaw, genreBlock, rest, idPrefix,
     dateStart,
     dateEnd: dateStart,
     price: priceMatch ? he.decode(priceMatch[1]).trim() : null,
-    ticketUrl: ticketMatch ? ticketMatch[1] : null,
+    ticketUrl: ticketMatch ? extractTicketUrl(ticketMatch[1]) : null,
     url: `${sourceUrl}#${dateStart}`,
     source: 'ConcertAndCo.com',
   };
@@ -465,7 +495,7 @@ function parseConcertsMetalBlock(block, idPrefix, sourceName) {
   const bands = [...block.matchAll(/<b>([^<]*)<\/b>\s*<i>([^<]*)<\/i>/g)].map((m) => ({ name: he.decode(m[1]) }));
   const hrefs = [...block.matchAll(/href="([^"]*)"/g)].map((m) => stripWaybackPrefix(m[1]));
   const detailUrl = hrefs.find((h) => h.includes('concerts-metal.com/concert')) || null;
-  const ticketUrl = hrefs.find((h) => h !== detailUrl && !h.includes('facebook.com')) || null;
+  const ticketUrl = extractTicketUrl(hrefs.find((h) => h !== detailUrl && !h.includes('facebook.com')) || null);
 
   const venue = names[0];
   const title = bands.length ? bands.map((b) => b.name).join(' + ') : (names[1] || names[0]);
@@ -691,6 +721,13 @@ const CITIES = [
   {
     slug: 'rennes',
     label: 'Rennes',
+    // JDS's "rennes" agenda and ConcertAndCo/concerts-metal.com's Bretagne-
+    // wide listings all reach well past the city itself (Cesson-Sévigné,
+    // Saint-Grégoire, even Nîmes/Toulouse have shown up on the Bretagne
+    // category page — ConcertAndCo's own region filter isn't reliable), so
+    // unlike Toulouse this city filters every source strictly down to the
+    // commune of Rennes itself.
+    communeFilter: ['rennes'],
     // L'Ubu (a real Rennes rock/metal venue) was checked and dropped: its
     // programmation page renders entirely client-side (a hashbang JS
     // router, no data in the static HTML, no discoverable API) — same dead
@@ -704,6 +741,19 @@ const CITIES = [
       // is this site's regional listing (same pattern as Toulouse's own
       // subdomain actually covering all of Midi-Pyrénées, not just the city).
       { prefix: 'archive-rennes', name: 'Concerts-Metal.com (archive)', fetcher: () => fetchConcertsMetalArchive('bretagne.concerts-metal.com', 'archive-rennes', 'Concerts-Metal.com (archive)') },
+    ],
+  },
+  {
+    slug: 'lorient',
+    label: 'Lorient',
+    // Same Bretagne-wide leakage problem as Rennes (they share the
+    // ConcertAndCo and concerts-metal.com sources), so filtered the same
+    // strict way.
+    communeFilter: ['lorient'],
+    sources: [
+      { prefix: 'jds-lorient', name: 'JDS.fr', fetcher: () => fetchJdsRock('lorient', 'jds-lorient') },
+      { prefix: 'cac-lorient', name: 'ConcertAndCo.com', fetcher: () => fetchConcertAndCo('bretagne', 'cac-lorient') },
+      { prefix: 'archive-lorient', name: 'Concerts-Metal.com (archive)', fetcher: () => fetchConcertsMetalArchive('bretagne.concerts-metal.com', 'archive-lorient', 'Concerts-Metal.com (archive)') },
     ],
   },
 ];
@@ -720,9 +770,14 @@ const CITIES = [
       return [];
     })));
     console.log(`${city.label}: ${city.sources.map((s, i) => `${results[i].length} from ${s.name}`).join(', ')}`);
-    cityFreshEvents[city.slug] = results.flat().map((ev) => ({ ...ev, city: city.slug }));
+    const fresh = results.flat().filter((ev) => !city.communeFilter || city.communeFilter.includes(normalizeForKey(ev.commune)));
+    cityFreshEvents[city.slug] = fresh.map((ev) => ({ ...ev, city: city.slug }));
   }
   if (debugLines.length) createFile('./dist/debug.txt', `${new Date().toISOString()}\n${debugLines.join('\n\n')}\n`);
+
+  // Clean up affiliate-redirector ticket links (Awin's pclick.php) into
+  // their real destination before these events get persisted or rendered.
+  await Promise.all(CITIES.flatMap((c) => cityFreshEvents[c.slug]).map(resolveAwinTicketUrl));
 
   // Merge into persisted history: upsert by id so events survive even after
   // a source stops listing them. Drop history from a source generation this
@@ -734,6 +789,18 @@ const CITIES = [
   for (const city of CITIES) {
     for (const ev of cityFreshEvents[city.slug]) {
       events[ev.id] = { ...ev, slug: slugFor(ev.id) };
+    }
+  }
+
+  // Purge persisted events that fail their city's commune filter — a fresh
+  // fetch alone can't do this, since an event already sitting in history
+  // from before a filter existed (or from before it tightened) would
+  // otherwise never be re-evaluated against it.
+  const citiesBySlug = Object.fromEntries(CITIES.map((c) => [c.slug, c]));
+  for (const [id, ev] of Object.entries(events)) {
+    const city = citiesBySlug[ev.city];
+    if (city?.communeFilter && !city.communeFilter.includes(normalizeForKey(ev.commune))) {
+      delete events[id];
     }
   }
 

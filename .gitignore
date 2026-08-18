@@ -4,3 +4,4 @@ dist/*
 !dist/manifest.json
 !dist/icons
 !dist/icons/*
+!dist/qrcode.min.js
