@@ -756,6 +756,26 @@ const CITIES = [
       { prefix: 'archive-lorient', name: 'Concerts-Metal.com (archive)', fetcher: () => fetchConcertsMetalArchive('bretagne.concerts-metal.com', 'archive-lorient', 'Concerts-Metal.com (archive)') },
     ],
   },
+  {
+    slug: 'montauban',
+    label: 'Montauban',
+    // Same idea as Rennes/Lorient, except this city shares Toulouse's
+    // sources (South-West, not Brittany): the "Midi-Pyrénées / Languedoc-
+    // Roussillon" ConcertAndCo category and the toulouse.concerts-metal.com
+    // archive both already cover Tarn-et-Garonne, just filtered down here
+    // to Montauban itself instead of the whole region.
+    communeFilter: ['montauban'],
+    // Le Rio Grande (the city's actual metal/rock SMAC venue) was checked
+    // and dropped: its own site has no agenda data in static HTML, and its
+    // ticketing subdomain (billetterie.rio-grande.fr) is a JS SPA with
+    // nothing in the static HTML either — same dead end as Noiser's old
+    // Festik billetterie and L'Ubu in Rennes.
+    sources: [
+      { prefix: 'jds-montauban', name: 'JDS.fr', fetcher: () => fetchJdsRock('montauban', 'jds-montauban') },
+      { prefix: 'cac-montauban', name: 'ConcertAndCo.com', fetcher: () => fetchConcertAndCo('midi-pyrenees-languedoc-roussillon', 'cac-montauban') },
+      { prefix: 'archive-montauban', name: 'Concerts-Metal.com (archive)', fetcher: () => fetchConcertsMetalArchive('toulouse.concerts-metal.com', 'archive-montauban', 'Concerts-Metal.com (archive)') },
+    ],
+  },
 ];
 
 (async () => {

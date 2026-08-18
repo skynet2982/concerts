@@ -1,7 +1,7 @@
 # Concerts Métal
 
 Site statique listant les prochains concerts metal, hardcore et punk à
-Toulouse, Rennes et Lorient.
+Toulouse, Rennes, Lorient et Montauban.
 
 **En ligne :** https://skynet2982.github.io/concerts/
 
@@ -12,19 +12,20 @@ Le site se reconstruit tout seul toutes les heures via GitHub Actions (voir
 
 - **Plusieurs villes** : un sélecteur au-dessus des onglets À venir/Historique
   bascule entre Toulouse (racine du site, ville par défaut), Rennes
-  (`/rennes/`) et Lorient (`/lorient/`). Chaque ville a son propre jeu de
-  sources dans `index.js` (tableau `CITIES`) — rien n'est mutualisé entre
-  elles au-delà du *type* de source (JDS.fr, ConcertAndCo.com,
-  concerts-metal.com archivé), les salles/programmateurs locaux sont par
-  nature propres à chaque ville. Le dédoublonnage (voir plus bas) est
-  scopé par ville : même groupe + même date sur deux villes différentes
-  n'est jamais considéré comme un doublon.
+  (`/rennes/`), Lorient (`/lorient/`) et Montauban (`/montauban/`). Chaque
+  ville a son propre jeu de sources dans `index.js` (tableau `CITIES`) —
+  rien n'est mutualisé entre elles au-delà du *type* de source (JDS.fr,
+  ConcertAndCo.com, concerts-metal.com archivé), les salles/programmateurs
+  locaux sont par nature propres à chaque ville. Le dédoublonnage (voir
+  plus bas) est scopé par ville : même groupe + même date sur deux villes
+  différentes n'est jamais considéré comme un doublon.
 
-  Rennes et Lorient partagent leurs deux sources régionales (ConcertAndCo
-  Bretagne, concerts-metal.com archivé sous `bretagne.`) avec toute la
-  Bretagne, pas seulement leur ville — et le classement par région de
+  Rennes/Lorient (Bretagne) et Montauban (Midi-Pyrénées, via les mêmes
+  sources régionales que Toulouse) partagent chacune leurs deux sources
+  régionales (ConcertAndCo, concerts-metal.com archivé) avec toute la
+  région, pas seulement leur ville — et le classement par région de
   ConcertAndCo s'est révélé peu fiable (sa page "Bretagne" a un temps
-  affiché des concerts à Nîmes et à Toulouse). Ces deux villes filtrent
+  affiché des concerts à Nîmes et à Toulouse). Ces trois villes filtrent
   donc chaque source, JDS.fr compris, strictement sur la commune exacte
   (`communeFilter` dans `CITIES`) plutôt que de faire confiance au
   découpage géographique du site source. Toulouse n'a pas ce filtre : ses
@@ -117,6 +118,24 @@ Le site se reconstruit tout seul toutes les heures via GitHub Actions (voir
   2. ConcertAndCo.com Bretagne (même requête que pour Rennes).
   3. `bretagne.concerts-metal.com` via la Wayback Machine (même instantané
      que pour Rennes).
+
+- **Sources de données pour Montauban** (trois — cette fois-ci les mêmes
+  sources régionales que Toulouse, pas Rennes/Lorient, puisque Montauban
+  est en Midi-Pyrénées, pas en Bretagne) :
+  1. La catégorie ["Rock" de JDS.fr pour Montauban](https://www.jds.fr/montauban/agenda/rock-111_B) —
+     aucun concert filtré metal en ce moment, mais la source reste
+     branchée (même logique que La Cabane pour Toulouse).
+  2. ConcertAndCo.com Midi-Pyrénées / Languedoc-Roussillon (même requête
+     que pour Toulouse).
+  3. `toulouse.concerts-metal.com` via la Wayback Machine (même instantané
+     que pour Toulouse).
+
+  Salle évaluée et écartée pour Montauban :
+  - **Le Rio Grande** (`rio-grande.fr`), la SMAC locale : aucune donnée
+    d'agenda dans le HTML statique du site, et sa billetterie sur un
+    sous-domaine dédié (`billetterie.rio-grande.fr`) est une SPA JS sans
+    rien d'exploitable non plus — même situation que la billetterie Festik
+    du Noiser ou L'Ubu à Rennes.
 
 - **Nettoyage des liens billetterie** : plusieurs sources (JDS.fr,
   ConcertAndCo.com, l'archive concerts-metal.com) pointent parfois vers un
@@ -225,4 +244,7 @@ stabiliser sur la combinaison actuelle :
 9. + ville de Lorient, filtrage strict par commune pour Rennes/Lorient
    (leurs sources régionales listaient des concerts ailleurs en Bretagne,
    voire hors Bretagne), nettoyage des liens billetterie Awin, et boutons
-   rafraîchir/QR code (actuel).
+   rafraîchir/QR code.
+10. + ville de Montauban (actuel) — mêmes sources régionales que Toulouse
+    (Midi-Pyrénées / Languedoc-Roussillon) plutôt que celles de Rennes/
+    Lorient (Bretagne), filtrées de la même façon sur la commune exacte.
