@@ -596,6 +596,66 @@ async function fetchZenith() {
   return events;
 }
 
+// Razibus — a punk/hardcore/ska show listing organized by (old) French
+// region, run by and for the DIY/underground scene rather than venues
+// themselves, so it picks up small bar shows and one-off gigs the other
+// sources (which lean on venues' own listings or mainstream ticketing
+// platforms) don't see. Its own genre scope is broader than just metal
+// (ska in particular), so results still go through the keyword filter —
+// applied to the whole item block's text, not just the title, since a
+// show's actual genre is often only mentioned in the free-text blurb.
+const RAZIBUS_ITEM_SPLIT = '<div class="item" itemscope itemtype="http://www.schema.org/MusicEvent">';
+
+function parseRazibusBlock(block, idPrefix, sourceUrl) {
+  const nameM = block.match(/itemprop="name">([^<]*)</);
+  const dateM = block.match(/itemprop="startDate" content="([^"]*)"/);
+  const locM = block.match(/itemprop="location" content="([^"]*)">([^<]*)</);
+  const urlM = block.match(/itemprop="url" href="([^"]*)"/);
+  if (!nameM || !dateM || !locM) return null;
+  if (!looksLikeMetal(stripTags(block))) return null;
+
+  const rawTitle = he.decode(nameM[1]).trim();
+  // Titles often carry the venue as an " @ Venue Name" suffix — the venue
+  // itemprop on this site only ever holds a street address, no name, so
+  // this is actually the *only* place a real venue name shows up. Pull it
+  // out into `venue` instead of just discarding it: better than the street
+  // address fallback, and keeps it from polluting bandTokensOf()'s
+  // fallback tokenization (index.js) for shows without a full lineup.
+  const atVenueM = rawTitle.match(/^(.*?)\s+@\s+(.+)$/);
+  const title = atVenueM ? atVenueM[1].trim() : rawTitle;
+  const commune = he.decode(locM[2]).trim();
+  const address = he.decode(locM[1]).trim();
+  const addressVenue = address.replace(/\s*\d{5}\s+.*$/, '').trim() || commune;
+  const venue = atVenueM ? atVenueM[2].trim() : addressVenue;
+  const dateStart = dateM[1];
+
+  return {
+    id: `${idPrefix}:${normalizeForKey([dateStart, commune, title].join('|'))}`,
+    title,
+    bands: [],
+    description: '',
+    venue,
+    commune,
+    address,
+    lat: null,
+    lon: null,
+    dateStart,
+    dateEnd: dateStart,
+    price: null,
+    ticketUrl: null,
+    url: urlM ? urlM[1] : sourceUrl,
+    source: 'Razibus',
+  };
+}
+
+async function fetchRazibus(region, idPrefix) {
+  const url = `https://razibus.net/evenements-a-venir.php?region=${region}`;
+  const html = await fetchText(url);
+  return html.split(RAZIBUS_ITEM_SPLIT).slice(1)
+    .map((block) => parseRazibusBlock(block, idPrefix, url))
+    .filter(Boolean);
+}
+
 async function fetchNoiser() {
   const html = await fetchText(NOISER_URL);
   const blocks = html.split('<div class="event row">').slice(1);
@@ -713,6 +773,7 @@ const CITIES = [
       { prefix: 'noiser', name: 'Noiser', fetcher: fetchNoiser },
       { prefix: 'lacabane', name: 'La Cabane', fetcher: fetchLaCabane },
       { prefix: 'zenith', name: 'Zénith Toulouse Métropole', fetcher: fetchZenith },
+      { prefix: 'razibus', name: 'Razibus', fetcher: () => fetchRazibus('Midi-Pyrenees', 'razibus') },
       // Last priority: stale archived data should lose to any live source
       // that lists the same show.
       { prefix: 'archive', name: 'Concerts-Metal.com (archive)', fetcher: () => fetchConcertsMetalArchive('toulouse.concerts-metal.com', 'archive', 'Concerts-Metal.com (archive)') },
@@ -737,6 +798,7 @@ const CITIES = [
     sources: [
       { prefix: 'jds-rennes', name: 'JDS.fr', fetcher: () => fetchJdsRock('rennes', 'jds-rennes') },
       { prefix: 'cac-rennes', name: 'ConcertAndCo.com', fetcher: () => fetchConcertAndCo('bretagne', 'cac-rennes') },
+      { prefix: 'razibus-rennes', name: 'Razibus', fetcher: () => fetchRazibus('Bretagne', 'razibus-rennes') },
       // concerts-metal.com has no dedicated "rennes" subdomain — "bretagne"
       // is this site's regional listing (same pattern as Toulouse's own
       // subdomain actually covering all of Midi-Pyrénées, not just the city).
@@ -753,6 +815,7 @@ const CITIES = [
     sources: [
       { prefix: 'jds-lorient', name: 'JDS.fr', fetcher: () => fetchJdsRock('lorient', 'jds-lorient') },
       { prefix: 'cac-lorient', name: 'ConcertAndCo.com', fetcher: () => fetchConcertAndCo('bretagne', 'cac-lorient') },
+      { prefix: 'razibus-lorient', name: 'Razibus', fetcher: () => fetchRazibus('Bretagne', 'razibus-lorient') },
       { prefix: 'archive-lorient', name: 'Concerts-Metal.com (archive)', fetcher: () => fetchConcertsMetalArchive('bretagne.concerts-metal.com', 'archive-lorient', 'Concerts-Metal.com (archive)') },
     ],
   },
@@ -773,6 +836,7 @@ const CITIES = [
     sources: [
       { prefix: 'jds-montauban', name: 'JDS.fr', fetcher: () => fetchJdsRock('montauban', 'jds-montauban') },
       { prefix: 'cac-montauban', name: 'ConcertAndCo.com', fetcher: () => fetchConcertAndCo('midi-pyrenees-languedoc-roussillon', 'cac-montauban') },
+      { prefix: 'razibus-montauban', name: 'Razibus', fetcher: () => fetchRazibus('Midi-Pyrenees', 'razibus-montauban') },
       { prefix: 'archive-montauban', name: 'Concerts-Metal.com (archive)', fetcher: () => fetchConcertsMetalArchive('toulouse.concerts-metal.com', 'archive-montauban', 'Concerts-Metal.com (archive)') },
     ],
   },

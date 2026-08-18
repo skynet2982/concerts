@@ -32,7 +32,7 @@ Le site se reconstruit tout seul toutes les heures via GitHub Actions (voir
   sources sont soit spécifiques à une seule salle, soit correctement
   bornées à Midi-Pyrénées / Languedoc-Roussillon.
 
-- **Sources de données pour Toulouse** (huit, fusionnées et dédupliquées —
+- **Sources de données pour Toulouse** (neuf, fusionnées et dédupliquées —
   voir plus bas ; en cas de doublon, la source la plus précisément taguée
   gagne, dans l'ordre de son entrée dans `CITIES` dans `index.js`) :
   1. La catégorie ["Rock" de JDS.fr pour Toulouse](https://www.jds.fr/toulouse/agenda/rock-111_B) —
@@ -66,7 +66,20 @@ Le site se reconstruit tout seul toutes les heures via GitHub Actions (voir
      étiquette de catégorie est explicitement retirée du texte avant le
      filtre mots-clés : seul le texte descriptif libre de chaque concert
      peut déclencher une correspondance. Les concerts annulés sont ignorés.
-  8. `toulouse.concerts-metal.com`, via [la Wayback Machine](https://web.archive.org/) —
+  8. [Razibus](https://razibus.net/) — agenda punk/hardcore/ska tenu par la
+     scène DIY elle-même plutôt que par les salles, découpé par (ancienne)
+     région (`?region=Midi-Pyrenees` pour Toulouse/Montauban, `Bretagne`
+     pour Rennes/Lorient) ; capte des concerts en bar/associatif que les
+     autres sources (côté salles ou billetterie mainstream) ne voient pas.
+     Son propre périmètre déborde du metal (le ska notamment), donc filtré
+     par mots-clés comme JDS/Metronum — mais sur le texte complet de la
+     fiche, pas juste le titre, certains titres n'étant qu'un nom de
+     soirée sans mention de genre. Limite connue : quand le titre n'est
+     pas un line-up ("Soirée X" plutôt que "Groupe A + Groupe B"), le
+     dédoublonnage par nom de groupe ne peut rien matcher — un même
+     concert peut alors apparaître deux fois s'il est aussi couvert par
+     une autre source qui, elle, liste les groupes.
+  9. `toulouse.concerts-metal.com`, via [la Wayback Machine](https://web.archive.org/) —
      le site est inatteignable depuis GitHub Actions (voir plus bas), et
      archive.ph a lui-même un captcha anti-bot. web.archive.org n'a ni l'un
      ni l'autre problème, donc cette source lit le dernier instantané déjà
@@ -88,7 +101,7 @@ Le site se reconstruit tout seul toutes les heures via GitHub Actions (voir
      mais s'est avérée avoir abouti quelques heures plus tard — la source
      est passée de 5-6 concerts (vieux instantané de novembre 2025) à 36.
 
-- **Sources de données pour Rennes** (trois — c'est le même point de départ
+- **Sources de données pour Rennes** (quatre — c'est le même point de départ
   que Toulouse à son lancement, avant les ajouts progressifs de salles
   locales) :
   1. La catégorie ["Rock" de JDS.fr pour Rennes](https://www.jds.fr/rennes/agenda/rock-111_B) —
@@ -98,7 +111,9 @@ Le site se reconstruit tout seul toutes les heures via GitHub Actions (voir
   2. La catégorie ["Metal-Hardcore-Hard Rock" de ConcertAndCo.com pour la
      Bretagne](https://www.concertandco.com/region-style/bretagne/metal-hardcore-hard-rock/billet-concert-2-MID.htm) —
      même source que pour Toulouse, région changée.
-  3. `bretagne.concerts-metal.com`, via la Wayback Machine — même mécanisme
+  3. [Razibus](https://razibus.net/evenements-a-venir.php?region=Bretagne),
+     région Bretagne — voir la description complète plus haut.
+  4. `bretagne.concerts-metal.com`, via la Wayback Machine — même mécanisme
      que pour Toulouse (voir plus haut) ; concerts-metal.com n'a pas de
      sous-domaine dédié à Rennes, `bretagne` est son découpage régional
      (le sous-domaine `toulouse`, lui aussi, couvre en réalité tout
@@ -112,14 +127,16 @@ Le site se reconstruit tout seul toutes les heures via GitHub Actions (voir
     pour Toulouse. Pas grave : ses concerts remontent en grande partie via
     JDS.fr de toute façon.
 
-- **Sources de données pour Lorient** (trois, mêmes sources que Rennes,
+- **Sources de données pour Lorient** (quatre, mêmes sources que Rennes,
   juste re-filtrées sur la commune de Lorient) :
-  1. La catégorie ["Rock" de JDS.fr pour Lorient](https://www.jds.fr/lorient/agenda/rock-111_B).
+  1. La catégorie ["Rock" de JDS.fr pour Lorient](https://www.jds.fr/lorient/agenda/rock-111_B) —
+     couvre déjà Hydrophone (ex-Le Manège), la SMAC locale.
   2. ConcertAndCo.com Bretagne (même requête que pour Rennes).
-  3. `bretagne.concerts-metal.com` via la Wayback Machine (même instantané
+  3. Razibus région Bretagne (même requête que pour Rennes).
+  4. `bretagne.concerts-metal.com` via la Wayback Machine (même instantané
      que pour Rennes).
 
-- **Sources de données pour Montauban** (trois — cette fois-ci les mêmes
+- **Sources de données pour Montauban** (quatre — cette fois-ci les mêmes
   sources régionales que Toulouse, pas Rennes/Lorient, puisque Montauban
   est en Midi-Pyrénées, pas en Bretagne) :
   1. La catégorie ["Rock" de JDS.fr pour Montauban](https://www.jds.fr/montauban/agenda/rock-111_B) —
@@ -127,7 +144,8 @@ Le site se reconstruit tout seul toutes les heures via GitHub Actions (voir
      branchée (même logique que La Cabane pour Toulouse).
   2. ConcertAndCo.com Midi-Pyrénées / Languedoc-Roussillon (même requête
      que pour Toulouse).
-  3. `toulouse.concerts-metal.com` via la Wayback Machine (même instantané
+  3. Razibus région Midi-Pyrenees (même requête que pour Toulouse).
+  4. `toulouse.concerts-metal.com` via la Wayback Machine (même instantané
      que pour Toulouse).
 
   Salle évaluée et écartée pour Montauban :
@@ -168,7 +186,7 @@ Le site se reconstruit tout seul toutes les heures via GitHub Actions (voir
     spécifiquement pour les IP des runners GitHub Actions (Cloudflare les
     reconnaît comme IP de datacenter). Pas de flux RSS/API non plus (tous
     les chemins testés renvoient la même page catch-all). Contourné via la
-    Wayback Machine (source 8 ci-dessus), avec la limite d'un instantané
+    Wayback Machine (source 9 ci-dessus), avec la limite d'un instantané
     figé plutôt que le site en direct.
   - **archive.ph** : lui-même protégé par un captcha anti-bot pour les
     requêtes automatisées — même catégorie de problème que Cloudflare,
@@ -184,6 +202,18 @@ Le site se reconstruit tout seul toutes les heures via GitHub Actions (voir
   - **Le Rex de Toulouse** (site propre) : programmation chargée en JS,
     aucune donnée exploitable en HTML statique ni API trouvée — mais ses
     concerts remontent déjà via JDS.fr/Noiser/Interférence.
+  - **Lounio** : agrégateur genre-filtré propre à Toulouse (aurait été un
+    bon complément à ConcertAndCo/JDS), mais le site a annoncé sa
+    fermeture prochaine — pas branché pour une source vouée à disparaître.
+  - **Axis Musique** (salle toulousaine qui accueille pourtant du metal,
+    cf. Razibus ci-dessus) : site en Elementor sans agenda exploitable en
+    HTML statique, pas d'API trouvée.
+  - **In Da Place** et **Zik Occitanie** : deux agrégateurs culturels
+    Occitanie plus larges que la musique. In Da Place charge ses
+    événements via une carte JS (Leaflet/Mapbox) sans endpoint public
+    identifié ; Zik Occitanie n'a pas de catégorie metal/rock distincte
+    (seulement chanson/jazz-blues/world). Aucun des deux n'apportait
+    assez pour justifier l'intégration.
 - **Historique** : chaque run fusionne les concerts récupérés avec
   `dist/history.json` (restauré depuis `gh-pages` avant le build), donc un
   concert reste visible dans l'onglet "Historique" même après sa
@@ -245,6 +275,11 @@ stabiliser sur la combinaison actuelle :
    (leurs sources régionales listaient des concerts ailleurs en Bretagne,
    voire hors Bretagne), nettoyage des liens billetterie Awin, et boutons
    rafraîchir/QR code.
-10. + ville de Montauban (actuel) — mêmes sources régionales que Toulouse
+10. + ville de Montauban — mêmes sources régionales que Toulouse
     (Midi-Pyrénées / Languedoc-Roussillon) plutôt que celles de Rennes/
     Lorient (Bretagne), filtrées de la même façon sur la commune exacte.
+11. + Razibus sur les quatre villes (actuel) — agenda punk/hardcore/ska
+    porté par la scène DIY plutôt que par les salles, trouvé en cherchant
+    plus de sources par ville ; Lounio, Axis Musique, In Da Place et Zik
+    Occitanie ont aussi été évalués pour Toulouse mais écartés (voir la
+    liste complète ci-dessus).
