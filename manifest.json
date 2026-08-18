@@ -1,7 +1,7 @@
 {
-  "name": "Concerts Metal Toulouse",
-  "short_name": "Concerts Metal",
-  "description": "Concerts metal, hardcore et punk à Toulouse",
+  "name": "Concerts Métal",
+  "short_name": "Concerts Métal",
+  "description": "Concerts metal, hardcore et punk à Toulouse et Rennes",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
