@@ -1,40 +1,46 @@
-2026-08-21T12:40:43.815Z
-[Toulouse] Concerts-Metal.com (archive): Error: HTTP 503 for https://web.archive.org/web/20260811144816id_/https://toulouse.concerts-metal.com/ — body: <html><head><meta charset="UTF-8"><title>Internet Archive: Temporarily Offline</title><style>p{font-size:24px;}img{margin-bottom:2rem;}</style></head>
+2026-08-21T13:43:18.287Z
+[Toulouse] Concerts-Metal.com (archive): Error: HTTP 503 for https://web.archive.org/cdx/search/cdx?url=toulouse.concerts-metal.com&output=json&filter=statuscode:200&limit=-1 — body: <html><head><meta charset="UTF-8"><title>Internet Archive: Temporarily Offline</title><style>p{font-size:24px;}img{margin-bottom:2rem;}</style></head>
 <body style="padding:30px 0;">
 <div style="float:left;width:260px;text-align:center;">
 <img xsrc="logo_ia.jpg" src="data:image/jpeg;base64,iVBORw0KGg
     at fetchText (/home/runner/work/concerts/concerts/index.js:77:11)
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async fetchConcertsMetalArchive (/home/runner/work/concerts/concerts/index.js:527:16)
+    at async fetchJson (/home/runner/work/concerts/concerts/index.js:83:21)
+    at async fetchConcertsMetalArchive (/home/runner/work/concerts/concerts/index.js:524:15)
     at async Promise.all (index 8)
     at async /home/runner/work/concerts/concerts/index.js:851:21
 
-[Rennes] Concerts-Metal.com (archive): Error: HTTP 503 for https://web.archive.org/web/20251122042119id_/https://bretagne.concerts-metal.com/ — body: <html><head><meta charset="UTF-8"><title>Internet Archive: Temporarily Offline</title><style>p{font-size:24px;}img{margin-bottom:2rem;}</style></head>
-<body style="padding:30px 0;">
-<div style="float:left;width:260px;text-align:center;">
-<img xsrc="logo_ia.jpg" src="data:image/jpeg;base64,iVBORw0KGg
-    at fetchText (/home/runner/work/concerts/concerts/index.js:77:11)
+[Toulouse] Zénith Toulouse Métropole: TypeError: fetch failed
+    at node:internal/deps/undici/undici:15157:13
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async fetchConcertsMetalArchive (/home/runner/work/concerts/concerts/index.js:527:16)
+    at async fetchText (/home/runner/work/concerts/concerts/index.js:71:15)
+    at async fetchZenith (/home/runner/work/concerts/concerts/index.js:544:16)
+    at async Promise.all (index 6)
+    at async /home/runner/work/concerts/concerts/index.js:851:21
+
+[Rennes] Concerts-Metal.com (archive): TimeoutError: The operation was aborted due to timeout
+    at node:internal/deps/undici/undici:15157:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async fetchText (/home/runner/work/concerts/concerts/index.js:71:15)
+    at async fetchJson (/home/runner/work/concerts/concerts/index.js:83:21)
+    at async fetchConcertsMetalArchive (/home/runner/work/concerts/concerts/index.js:524:15)
     at async Promise.all (index 3)
     at async /home/runner/work/concerts/concerts/index.js:851:21
 
-[Lorient] Concerts-Metal.com (archive): Error: HTTP 503 for https://web.archive.org/web/20251122042119id_/https://bretagne.concerts-metal.com/ — body: <html><head><meta charset="UTF-8"><title>Internet Archive: Temporarily Offline</title><style>p{font-size:24px;}img{margin-bottom:2rem;}</style></head>
-<body style="padding:30px 0;">
-<div style="float:left;width:260px;text-align:center;">
-<img xsrc="logo_ia.jpg" src="data:image/jpeg;base64,iVBORw0KGg
-    at fetchText (/home/runner/work/concerts/concerts/index.js:77:11)
+[Lorient] Concerts-Metal.com (archive): TimeoutError: The operation was aborted due to timeout
+    at node:internal/deps/undici/undici:15157:13
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async fetchConcertsMetalArchive (/home/runner/work/concerts/concerts/index.js:527:16)
+    at async fetchText (/home/runner/work/concerts/concerts/index.js:71:15)
+    at async fetchJson (/home/runner/work/concerts/concerts/index.js:83:21)
+    at async fetchConcertsMetalArchive (/home/runner/work/concerts/concerts/index.js:524:15)
     at async Promise.all (index 3)
     at async /home/runner/work/concerts/concerts/index.js:851:21
 
-[Montauban] Concerts-Metal.com (archive): Error: HTTP 503 for https://web.archive.org/web/20260811144816id_/https://toulouse.concerts-metal.com/ — body: <html><head><meta charset="UTF-8"><title>Internet Archive: Temporarily Offline</title><style>p{font-size:24px;}img{margin-bottom:2rem;}</style></head>
-<body style="padding:30px 0;">
-<div style="float:left;width:260px;text-align:center;">
-<img xsrc="logo_ia.jpg" src="data:image/jpeg;base64,iVBORw0KGg
-    at fetchText (/home/runner/work/concerts/concerts/index.js:77:11)
+[Montauban] Concerts-Metal.com (archive): TimeoutError: The operation was aborted due to timeout
+    at node:internal/deps/undici/undici:15157:13
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async fetchConcertsMetalArchive (/home/runner/work/concerts/concerts/index.js:527:16)
+    at async fetchText (/home/runner/work/concerts/concerts/index.js:71:15)
+    at async fetchJson (/home/runner/work/concerts/concerts/index.js:83:21)
+    at async fetchConcertsMetalArchive (/home/runner/work/concerts/concerts/index.js:524:15)
     at async Promise.all (index 3)
     at async /home/runner/work/concerts/concerts/index.js:851:21
