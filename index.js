@@ -942,6 +942,21 @@ const CITIES = [
     createFile(`${EVENTS_DIR}/${ev.slug}.html`, templates.eventPage({ ...ev, backHref: `../${cityDir(ev.city)}index.html` }));
   }
 
+  // Band-search index (site-wide, upcoming shows only): a single small
+  // JSON file fetched client-side by the search box in every page's
+  // header, so searching a band name doesn't require the visitor to
+  // already know which city it's in.
+  const searchIndex = CITIES.flatMap((city) => cityByCategory[city.slug]['a-venir'].map((e) => ({
+    title: e.title,
+    bands: (e.bands || []).map((b) => b.name),
+    venue: e.venue,
+    commune: e.commune,
+    cityLabel: city.label,
+    dateStart: e.dateStart,
+    slug: e.slug,
+  })));
+  createFile('./dist/search-index.json', JSON.stringify(searchIndex));
+
   const cityLinksBase = CITIES.map((c) => ({ slug: c.slug, label: c.label }));
 
   for (const city of CITIES) {

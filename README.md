@@ -225,6 +225,14 @@ Le site se reconstruit tout seul toutes les heures via GitHub Actions (voir
   utile pour partager directement une page paginée ou une ville) via
   `dist/qrcode.min.js`, une lib vendorisée (MIT, kazuhikoarase/qrcode-generator)
   générée entièrement côté client, sans requête réseau ni service tiers.
+- **Recherche par groupe** : un champ de recherche en haut de chaque page
+  interroge `dist/search-index.json` (généré par `index.js`, un objet par
+  concert à venir toutes villes confondues — titre, groupes, lieu, ville,
+  date) côté client, sans backend. Il matche sur le titre ou le nom d'un
+  groupe (normalisé comme `bandTokensOf`, insensible aux accents/casse),
+  toutes villes confondues à la fois — utile pour retrouver un groupe sans
+  savoir dans quelle ville géré par le site il joue. Ne couvre que l'à
+  venir, pas l'historique.
 
 ## Structure
 
@@ -278,8 +286,10 @@ stabiliser sur la combinaison actuelle :
 10. + ville de Montauban — mêmes sources régionales que Toulouse
     (Midi-Pyrénées / Languedoc-Roussillon) plutôt que celles de Rennes/
     Lorient (Bretagne), filtrées de la même façon sur la commune exacte.
-11. + Razibus sur les quatre villes (actuel) — agenda punk/hardcore/ska
-    porté par la scène DIY plutôt que par les salles, trouvé en cherchant
-    plus de sources par ville ; Lounio, Axis Musique, In Da Place et Zik
-    Occitanie ont aussi été évalués pour Toulouse mais écartés (voir la
-    liste complète ci-dessus).
+11. + Razibus sur les quatre villes — agenda punk/hardcore/ska porté par
+    la scène DIY plutôt que par les salles, trouvé en cherchant plus de
+    sources par ville ; Lounio, Axis Musique, In Da Place et Zik Occitanie
+    ont aussi été évalués pour Toulouse mais écartés (voir la liste
+    complète ci-dessus).
+12. + recherche par groupe (actuel) — champ de recherche client-side sur
+    `search-index.json`, toutes villes confondues.

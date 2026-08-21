@@ -245,6 +245,74 @@ body {
   word-break: break-all;
 }
 
+.search-wrap {
+  position: relative;
+  margin-bottom: 1rem;
+}
+
+.search-input {
+  width: 100%;
+  padding: .6rem .9rem;
+  font-size: .95rem;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  color: var(--card-title);
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--card-accent);
+}
+
+.search-input::placeholder {
+  color: var(--card-muted);
+}
+
+.search-results {
+  position: absolute;
+  z-index: 900;
+  top: calc(100% + .4rem);
+  left: 0;
+  right: 0;
+  max-height: 60vh;
+  overflow-y: auto;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  box-shadow: var(--card-shadow-hover);
+}
+
+.search-results[hidden] {
+  display: none;
+}
+
+.search-result {
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+  padding: .6rem .9rem;
+  border-bottom: 1px solid var(--card-border);
+  color: var(--card-title);
+}
+
+.search-result:last-child { border-bottom: none; }
+
+.search-result:hover,
+.search-result:focus-visible { background: var(--card-accent-bg); }
+
+.search-result span {
+  font-size: .8rem;
+  color: var(--card-muted);
+}
+
+.search-empty {
+  margin: 0;
+  padding: .75rem .9rem;
+  font-size: .85rem;
+  color: var(--card-muted);
+}
+
 .selector-row {
   display: flex;
   align-items: center;

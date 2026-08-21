@@ -64,6 +64,10 @@ module.exports.document = function (body, { basePrefix = './', switchLinks = [],
             <strong>Dernière mise à jour</strong>: ${new Date().toLocaleString("fr-FR", { timeZone: "Europe/Paris" })}
           </div>
         </div>
+        <div class="search-wrap" id="search-wrap">
+          <input type="search" id="band-search" class="search-input" placeholder="Rechercher un groupe, dans toutes les villes…" autocomplete="off">
+          <div class="search-results" id="search-results" hidden></div>
+        </div>
         ${cityHtml}
         ${switchHtml}
         ${body}
@@ -101,6 +105,72 @@ module.exports.document = function (body, { basePrefix = './', switchLinks = [],
         });
         overlay.addEventListener('click', function (e) {
           if (e.target === overlay) overlay.hidden = true;
+        });
+      })();
+      (function () {
+        var input = document.getElementById('band-search');
+        var wrap = document.getElementById('search-wrap');
+        var results = document.getElementById('search-results');
+        var basePrefix = ${JSON.stringify(basePrefix)};
+        var indexPromise = null;
+
+        function normalize(s) {
+          return (s || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase();
+        }
+        function escapeHtml(s) {
+          return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+        function formatDate(iso) {
+          var d = new Date(iso + 'T00:00:00');
+          return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+        function loadIndex() {
+          if (!indexPromise) {
+            indexPromise = fetch(basePrefix + 'search-index.json')
+              .then(function (r) { return r.json(); })
+              .catch(function () { return []; });
+          }
+          return indexPromise;
+        }
+        function render(items, query) {
+          if (items.length === 0) {
+            results.innerHTML = '<p class="search-empty">Aucun concert à venir trouvé pour «\\u00a0' + escapeHtml(query) + '\\u00a0».</p>';
+          } else {
+            results.innerHTML = items.slice(0, 20).map(function (e) {
+              return '<a class="search-result" href="' + basePrefix + 'concerts/' + e.slug + '.html">' +
+                '<strong>' + escapeHtml(e.title) + '</strong>' +
+                '<span>' + escapeHtml(e.cityLabel) + ' \\u00b7 ' + escapeHtml(e.venue) + ' \\u00b7 ' + formatDate(e.dateStart) + '</span>' +
+                '</a>';
+            }).join('');
+          }
+          results.hidden = false;
+        }
+
+        var debounceTimer;
+        input.addEventListener('input', function () {
+          var query = input.value.trim();
+          clearTimeout(debounceTimer);
+          if (!query) {
+            results.hidden = true;
+            results.innerHTML = '';
+            return;
+          }
+          debounceTimer = setTimeout(function () {
+            loadIndex().then(function (items) {
+              var nq = normalize(query);
+              var matches = items.filter(function (e) {
+                return normalize(e.title).indexOf(nq) !== -1 ||
+                  (e.bands || []).some(function (b) { return normalize(b).indexOf(nq) !== -1; });
+              }).sort(function (a, b) { return a.dateStart.localeCompare(b.dateStart); });
+              render(matches, query);
+            });
+          }, 150);
+        });
+        input.addEventListener('focus', function () {
+          if (input.value.trim()) results.hidden = false;
+        });
+        document.addEventListener('click', function (e) {
+          if (!wrap.contains(e.target)) results.hidden = true;
         });
       })();
     </script>
