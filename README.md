@@ -220,19 +220,28 @@ Le site se reconstruit tout seul toutes les heures via GitHub Actions (voir
   disparition du site source.
 - Deux onglets : **À venir** (tri par date croissante) et **Historique**
   (concerts passés, tri par date décroissante), tous deux paginés.
-- Deux boutons utilitaires au-dessus du sélecteur de ville : 🔄 recharge la
-  page, 📱 affiche un QR code de la page courante (pas juste l'accueil —
-  utile pour partager directement une page paginée ou une ville) via
-  `dist/qrcode.min.js`, une lib vendorisée (MIT, kazuhikoarase/qrcode-generator)
-  générée entièrement côté client, sans requête réseau ni service tiers.
-- **Recherche par groupe** : un champ de recherche en haut de chaque page
-  interroge `dist/search-index.json` (généré par `index.js`, un objet par
-  concert à venir toutes villes confondues — titre, groupes, lieu, ville,
-  date) côté client, sans backend. Il matche sur le titre ou le nom d'un
-  groupe (normalisé comme `bandTokensOf`, insensible aux accents/casse),
-  toutes villes confondues à la fois — utile pour retrouver un groupe sans
-  savoir dans quelle ville géré par le site il joue. Ne couvre que l'à
-  venir, pas l'historique.
+- Trois boutons utilitaires au-dessus du sélecteur de ville : 🔄 recharge
+  la page, 📅 ouvre le calendrier (voir plus bas), 📱 affiche un QR code de
+  la page courante (pas juste l'accueil — utile pour partager directement
+  une page paginée ou une ville) via `dist/qrcode.min.js`, une lib
+  vendorisée (MIT, kazuhikoarase/qrcode-generator) générée entièrement
+  côté client, sans requête réseau ni service tiers.
+- **`dist/search-index.json`** : généré par `index.js` à chaque build (un
+  objet par concert, à venir *et* historique, toutes villes confondues —
+  titre, groupes, lieu, ville, date), consommé côté client sans backend
+  par deux fonctionnalités :
+  - **Recherche par groupe** : un champ de recherche en haut de chaque
+    page matche sur le titre ou le nom d'un groupe (normalisé comme
+    `bandTokensOf`, insensible aux accents/casse), toutes villes
+    confondues à la fois — utile pour retrouver un groupe sans savoir
+    dans quelle ville géré par le site il joue. Filtre elle-même l'index
+    aux concerts à venir uniquement (`dateStart` >= aujourd'hui).
+  - **Calendrier** (bouton 📅) : une vue mensuelle où les jours ayant un
+    concert *dans la ville courante* sont mis en évidence ; cliquer sur
+    un jour affiche la liste des concerts ce jour-là. Contrairement à la
+    recherche, il n'est pas filtré aux villes ni à l'à-venir — on peut
+    naviguer vers un mois passé et y voir l'historique de la ville
+    affichée.
 
 ## Structure
 
@@ -291,5 +300,8 @@ stabiliser sur la combinaison actuelle :
     sources par ville ; Lounio, Axis Musique, In Da Place et Zik Occitanie
     ont aussi été évalués pour Toulouse mais écartés (voir la liste
     complète ci-dessus).
-12. + recherche par groupe (actuel) — champ de recherche client-side sur
+12. + recherche par groupe — champ de recherche client-side sur
     `search-index.json`, toutes villes confondues.
+13. + correctif sélecteur de ville débordant sur mobile étroit, + bouton
+    calendrier (actuel) — même `search-index.json` que la recherche,
+    étendu à l'historique en plus de l'à-venir.
