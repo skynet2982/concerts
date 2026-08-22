@@ -25,10 +25,11 @@
         <div class="update-row mb-3">
           <div class="util-actions">
             <button type="button" class="util-btn" id="refresh-btn" title="Rafraîchir la page" aria-label="Rafraîchir la page">🔄</button>
+            <button type="button" class="util-btn" id="cal-btn" title="Calendrier des concerts" aria-label="Calendrier des concerts">📅</button>
             <button type="button" class="util-btn" id="qr-btn" title="Afficher le QR code de la page" aria-label="Afficher le QR code de la page">📱</button>
           </div>
           <div class="col">
-            <strong>Dernière mise à jour</strong>: 22/08/2026 18:21:04
+            <strong>Dernière mise à jour</strong>: 22/08/2026 18:46:51
           </div>
         </div>
         <div class="search-wrap" id="search-wrap">
@@ -52,9 +53,40 @@
           <p class="qr-url" id="qr-url"></p>
         </div>
       </div>
+      <div class="qr-overlay" id="cal-overlay" hidden>
+        <div class="cal-modal">
+          <button type="button" class="qr-close" id="cal-close" aria-label="Fermer">✕</button>
+          <div class="cal-header">
+            <button type="button" class="cal-nav" id="cal-prev" aria-label="Mois précédent">&lsaquo;</button>
+            <strong id="cal-month-label"></strong>
+            <button type="button" class="cal-nav" id="cal-next" aria-label="Mois suivant">&rsaquo;</button>
+          </div>
+          <div class="cal-weekdays"><span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span></div>
+          <div class="cal-grid" id="cal-grid"></div>
+          <div class="cal-day-events" id="cal-day-events" hidden></div>
+        </div>
+      </div>
     </main>
     <script src="../qrcode.min.js"></script>
     <script>
+      var basePrefix = "../";
+      var activeCitySlug = "toulouse";
+      var _eventIndexPromise = null;
+      function loadEventIndex() {
+        if (!_eventIndexPromise) {
+          _eventIndexPromise = fetch(basePrefix + 'search-index.json')
+            .then(function (r) { return r.json(); })
+            .catch(function () { return []; });
+        }
+        return _eventIndexPromise;
+      }
+      function normalizeText(s) {
+        return (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+      }
+      function escapeHtmlJs(s) {
+        return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      }
+
       document.getElementById('refresh-btn').addEventListener('click', function () {
         location.reload();
       });
@@ -84,35 +116,19 @@
         var input = document.getElementById('band-search');
         var wrap = document.getElementById('search-wrap');
         var results = document.getElementById('search-results');
-        var basePrefix = "../";
-        var indexPromise = null;
 
-        function normalize(s) {
-          return (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-        }
-        function escapeHtml(s) {
-          return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-        }
         function formatDate(iso) {
           var d = new Date(iso + 'T00:00:00');
           return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
         }
-        function loadIndex() {
-          if (!indexPromise) {
-            indexPromise = fetch(basePrefix + 'search-index.json')
-              .then(function (r) { return r.json(); })
-              .catch(function () { return []; });
-          }
-          return indexPromise;
-        }
         function render(items, query) {
           if (items.length === 0) {
-            results.innerHTML = '<p class="search-empty">Aucun concert à venir trouvé pour «\u00a0' + escapeHtml(query) + '\u00a0».</p>';
+            results.innerHTML = '<p class="search-empty">Aucun concert à venir trouvé pour «\u00a0' + escapeHtmlJs(query) + '\u00a0».</p>';
           } else {
             results.innerHTML = items.slice(0, 20).map(function (e) {
               return '<a class="search-result" href="' + basePrefix + 'concerts/' + e.slug + '.html">' +
-                '<strong>' + escapeHtml(e.title) + '</strong>' +
-                '<span>' + escapeHtml(e.cityLabel) + ' \u00b7 ' + escapeHtml(e.venue) + ' \u00b7 ' + formatDate(e.dateStart) + '</span>' +
+                '<strong>' + escapeHtmlJs(e.title) + '</strong>' +
+                '<span>' + escapeHtmlJs(e.cityLabel) + ' \u00b7 ' + escapeHtmlJs(e.venue) + ' \u00b7 ' + formatDate(e.dateStart) + '</span>' +
                 '</a>';
             }).join('');
           }
@@ -129,11 +145,13 @@
             return;
           }
           debounceTimer = setTimeout(function () {
-            loadIndex().then(function (items) {
-              var nq = normalize(query);
+            loadEventIndex().then(function (items) {
+              var nq = normalizeText(query);
+              var todayIso = new Date().toISOString().slice(0, 10);
               var matches = items.filter(function (e) {
-                return normalize(e.title).indexOf(nq) !== -1 ||
-                  (e.bands || []).some(function (b) { return normalize(b).indexOf(nq) !== -1; });
+                if (e.dateStart < todayIso) return false;
+                return normalizeText(e.title).indexOf(nq) !== -1 ||
+                  (e.bands || []).some(function (b) { return normalizeText(b).indexOf(nq) !== -1; });
               }).sort(function (a, b) { return a.dateStart.localeCompare(b.dateStart); });
               render(matches, query);
             });
@@ -144,6 +162,79 @@
         });
         document.addEventListener('click', function (e) {
           if (!wrap.contains(e.target)) results.hidden = true;
+        });
+      })();
+      (function () {
+        var btn = document.getElementById('cal-btn');
+        var overlay = document.getElementById('cal-overlay');
+        var closeBtn = document.getElementById('cal-close');
+        var prevBtn = document.getElementById('cal-prev');
+        var nextBtn = document.getElementById('cal-next');
+        var monthLabel = document.getElementById('cal-month-label');
+        var grid = document.getElementById('cal-grid');
+        var dayEvents = document.getElementById('cal-day-events');
+        var eventsByDate = null;
+        var current = new Date();
+        current.setDate(1);
+        current.setHours(0, 0, 0, 0);
+
+        function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+        function isoOf(y, m, d) { return y + '-' + pad2(m + 1) + '-' + pad2(d); }
+        function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+        function renderMonth() {
+          var year = current.getFullYear(), month = current.getMonth();
+          monthLabel.textContent = capitalize(current.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }));
+          var firstWeekday = (new Date(year, month, 1).getDay() + 6) % 7; // Monday = 0
+          var daysInMonth = new Date(year, month + 1, 0).getDate();
+          var todayIso = new Date().toISOString().slice(0, 10);
+          var html = '';
+          for (var i = 0; i < firstWeekday; i++) html += '<span class="cal-cell cal-empty"></span>';
+          for (var d = 1; d <= daysInMonth; d++) {
+            var iso = isoOf(year, month, d);
+            var has = eventsByDate && eventsByDate[iso];
+            var cls = 'cal-cell' + (has ? ' has-events' : '') + (iso === todayIso ? ' is-today' : '');
+            html += '<button type="button" class="' + cls + '" data-date="' + iso + '"' + (has ? '' : ' disabled') + '>' + d + '</button>';
+          }
+          grid.innerHTML = html;
+          dayEvents.hidden = true;
+          dayEvents.innerHTML = '';
+        }
+
+        function showDay(iso) {
+          var items = (eventsByDate && eventsByDate[iso]) || [];
+          dayEvents.innerHTML = items.map(function (e) {
+            return '<a class="search-result" href="' + basePrefix + 'concerts/' + e.slug + '.html">' +
+              '<strong>' + escapeHtmlJs(e.title) + '</strong>' +
+              '<span>' + escapeHtmlJs(e.venue) + (e.commune ? ' \u00b7 ' + escapeHtmlJs(e.commune) : '') + '</span>' +
+              '</a>';
+          }).join('');
+          dayEvents.hidden = false;
+        }
+
+        grid.addEventListener('click', function (e) {
+          var target = e.target.closest('.cal-cell.has-events');
+          if (target) showDay(target.getAttribute('data-date'));
+        });
+        prevBtn.addEventListener('click', function () { current.setMonth(current.getMonth() - 1); renderMonth(); });
+        nextBtn.addEventListener('click', function () { current.setMonth(current.getMonth() + 1); renderMonth(); });
+        btn.addEventListener('click', function () {
+          overlay.hidden = false;
+          if (eventsByDate) return;
+          grid.innerHTML = '<p class="search-empty">Chargement…</p>';
+          loadEventIndex().then(function (items) {
+            var map = {};
+            items.forEach(function (e) {
+              if (e.citySlug !== activeCitySlug) return;
+              (map[e.dateStart] = map[e.dateStart] || []).push(e);
+            });
+            eventsByDate = map;
+            renderMonth();
+          });
+        });
+        closeBtn.addEventListener('click', function () { overlay.hidden = true; });
+        overlay.addEventListener('click', function (e) {
+          if (e.target === overlay) overlay.hidden = true;
         });
       })();
     </script>
