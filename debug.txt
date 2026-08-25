@@ -1,8 +1,9 @@
-2026-08-25T03:46:48.210Z
-[Toulouse] Zénith Toulouse Métropole: TypeError: fetch failed
+2026-08-25T04:36:12.127Z
+[Lorient] Concerts-Metal.com (archive): TimeoutError: The operation was aborted due to timeout
     at node:internal/deps/undici/undici:15157:13
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
     at async fetchText (/home/runner/work/concerts/concerts/index.js:71:15)
-    at async fetchZenith (/home/runner/work/concerts/concerts/index.js:544:16)
-    at async Promise.all (index 6)
+    at async fetchJson (/home/runner/work/concerts/concerts/index.js:83:21)
+    at async fetchConcertsMetalArchive (/home/runner/work/concerts/concerts/index.js:524:15)
+    at async Promise.all (index 3)
     at async /home/runner/work/concerts/concerts/index.js:851:21
