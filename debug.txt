@@ -1,4 +1,4 @@
-2026-08-25T05:29:11.999Z
+2026-08-25T06:41:33.883Z
 [Toulouse] Concerts-Metal.com (archive): TimeoutError: The operation was aborted due to timeout
     at node:internal/deps/undici/undici:15157:13
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
@@ -17,7 +17,7 @@
     at async Promise.all (index 3)
     at async /home/runner/work/concerts/concerts/index.js:851:21
 
-[Montauban] Concerts-Metal.com (archive): TimeoutError: The operation was aborted due to timeout
+[Lorient] Concerts-Metal.com (archive): TimeoutError: The operation was aborted due to timeout
     at node:internal/deps/undici/undici:15157:13
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
     at async fetchText (/home/runner/work/concerts/concerts/index.js:71:15)
