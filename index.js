@@ -707,6 +707,125 @@ async function fetchNoiser() {
   return events;
 }
 
+// AllEvents.in — a broad international event aggregator, suggested by the
+// user after Bandsintown/Songkick/Spotify/Apple Music all turned out to be
+// either bot-walled or artist-scoped (see README's "Sites évalués et
+// écartés"). Unlike those, a plain fetch here gets no Cloudflare/bot
+// challenge — its own robots.txt names ClaudeBot explicitly with only a
+// crawl-delay, not a disallow — and each event page embeds a clean
+// schema.org MusicEvent/Event JSON-LD block. Its own genre tagging (a
+// `category_tag_combined` JS variable on each event page) turned out
+// unreliable enough not to trust: a hardcore/death-metal show at La
+// Mécanique des Fluides came back tagged "kids,parties,entertainment" by
+// its organizer. So, like JDS/Zenith, results go through the same keyword
+// filter over title+description instead. The category *listing* pages
+// (`/metal`, `/hardcore`, `/punk`) are themselves unfiltered padding past
+// the first handful of real hits — a flea market and a jazz night both
+// turned up on the "metal" listing — so those pages are only used to
+// gather candidate links; the actual filtering decision happens per-event,
+// off each candidate's own detail page.
+//
+// Montauban is deliberately not wired up here: allevents.in silently
+// redirects `/montauban/...` to `/montalba/...`, an unrelated Texas city,
+// rather than 404ing — wiring it up would pull in US listings, not
+// nothing (unlike La Cabane's "real venue, zero matches yet" case, this
+// city slug just doesn't exist on this site).
+const ALLEVENTS_CATEGORIES = ['metal', 'hardcore', 'punk'];
+
+// Organizers title their AllEvents.in listings with the venue tacked on the
+// end, in whatever separator they feel like ("BAND | Venue", "BAND @ Venue",
+// "BAND // Venue"...). Left in place, that tail becomes part of the single
+// fallback token bandTokensOf() (index.js) produces for a bandless event —
+// which broke real dedup: "THE BLACK DAHLIA MURDER | Le Rex de Toulouse"
+// didn't match the same show's "The Black Dahlia Murder" title already
+// coming from another source, because the venue text made the tokens
+// differ. Since the venue string is already known from this same JSON-LD
+// block, strip it back out of the title whenever it verbatim appears near
+// the end — no guessing at which punctuation mark a given organizer used.
+function stripVenueFromTitle(title, venue) {
+  if (!venue) return title;
+  const idx = title.toLowerCase().lastIndexOf(venue.toLowerCase());
+  if (idx <= 0) return title;
+  const stripped = title.slice(0, idx)
+    .replace(/\s+(?:au|à|at|chez)\s*$/i, '') // "... au Melody Maker" -> drop the dangling connector word too
+    .replace(/[@|/·-]+\s*$/, '')
+    .trim();
+  return stripped || title;
+}
+
+function parseAllEventsDetail(html, idPrefix, sourceUrl) {
+  const scripts = [...html.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/gs)].map((m) => m[1]);
+  let it = null;
+  for (const raw of scripts) {
+    let data;
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      continue;
+    }
+    if (data && (data['@type'] === 'MusicEvent' || data['@type'] === 'Event') && data.startDate) {
+      it = data;
+      break;
+    }
+  }
+  if (!it) return null;
+
+  const location = it.location || {};
+  const addr = location.address || {};
+  const geo = location.geo || {};
+  const venue = he.decode(location.name || '');
+  const title = stripVenueFromTitle(he.decode(it.name || ''), venue);
+  const description = he.decode(it.description || '').trim();
+  if (!looksLikeMetal(`${title} ${description}`)) return null;
+
+  const commune = he.decode(addr.addressLocality || '');
+  const streetAddress = he.decode(addr.streetAddress || '');
+  const address = [streetAddress, [addr.postalCode, commune].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+  const dateStart = (it.startDate || '').slice(0, 10);
+
+  // The real ticket destination isn't in the JSON-LD — it's stashed in a
+  // `clevertap_obj['external_ticket_url']` JS assignment elsewhere on the
+  // page. Grab that instead of falling back to the allevents.in page itself.
+  const ticketM = html.match(/external_ticket_url'\]\s*=\s*"([^"]*)"/);
+  const ticketUrl = ticketM ? ticketM[1].replace(/\\\//g, '/') : null;
+
+  return {
+    id: `${idPrefix}:${normalizeForKey([dateStart, venue, title].join('|'))}`,
+    title,
+    bands: [],
+    description,
+    venue,
+    commune,
+    address,
+    lat: typeof geo.latitude !== 'undefined' ? Number(geo.latitude) : null,
+    lon: typeof geo.longitude !== 'undefined' ? Number(geo.longitude) : null,
+    dateStart,
+    dateEnd: dateStart,
+    price: null,
+    ticketUrl,
+    url: it.url || sourceUrl,
+    source: 'AllEvents.in',
+  };
+}
+
+async function fetchAllEvents(citySlug, idPrefix) {
+  const candidateUrls = new Set();
+  for (const category of ALLEVENTS_CATEGORIES) {
+    const html = await fetchText(`https://allevents.in/${citySlug}/${category}`).catch(() => '');
+    const linkRe = new RegExp(`href="(https://allevents\\.in/${citySlug}/[^"]+/\\d{5,})"`, 'g');
+    for (const m of html.matchAll(linkRe)) candidateUrls.add(m[1]);
+  }
+
+  const events = [];
+  for (const url of candidateUrls) {
+    const html = await fetchText(url).catch(() => '');
+    if (!html) continue;
+    const ev = parseAllEventsDetail(html, idPrefix, url);
+    if (ev) events.push(ev);
+  }
+  return events;
+}
+
 function paginate(items) {
   const pages = [];
   for (let i = 0; i < items.length || i === 0; i += PAGE_SIZE) {
@@ -774,6 +893,7 @@ const CITIES = [
       { prefix: 'lacabane', name: 'La Cabane', fetcher: fetchLaCabane },
       { prefix: 'zenith', name: 'Zénith Toulouse Métropole', fetcher: fetchZenith },
       { prefix: 'razibus', name: 'Razibus', fetcher: () => fetchRazibus('Midi-Pyrenees', 'razibus') },
+      { prefix: 'allevents', name: 'AllEvents.in', fetcher: () => fetchAllEvents('toulouse', 'allevents') },
       // Last priority: stale archived data should lose to any live source
       // that lists the same show.
       { prefix: 'archive', name: 'Concerts-Metal.com (archive)', fetcher: () => fetchConcertsMetalArchive('toulouse.concerts-metal.com', 'archive', 'Concerts-Metal.com (archive)') },
@@ -799,6 +919,7 @@ const CITIES = [
       { prefix: 'jds-rennes', name: 'JDS.fr', fetcher: () => fetchJdsRock('rennes', 'jds-rennes') },
       { prefix: 'cac-rennes', name: 'ConcertAndCo.com', fetcher: () => fetchConcertAndCo('bretagne', 'cac-rennes') },
       { prefix: 'razibus-rennes', name: 'Razibus', fetcher: () => fetchRazibus('Bretagne', 'razibus-rennes') },
+      { prefix: 'allevents-rennes', name: 'AllEvents.in', fetcher: () => fetchAllEvents('rennes', 'allevents-rennes') },
       // concerts-metal.com has no dedicated "rennes" subdomain — "bretagne"
       // is this site's regional listing (same pattern as Toulouse's own
       // subdomain actually covering all of Midi-Pyrénées, not just the city).
@@ -816,6 +937,7 @@ const CITIES = [
       { prefix: 'jds-lorient', name: 'JDS.fr', fetcher: () => fetchJdsRock('lorient', 'jds-lorient') },
       { prefix: 'cac-lorient', name: 'ConcertAndCo.com', fetcher: () => fetchConcertAndCo('bretagne', 'cac-lorient') },
       { prefix: 'razibus-lorient', name: 'Razibus', fetcher: () => fetchRazibus('Bretagne', 'razibus-lorient') },
+      { prefix: 'allevents-lorient', name: 'AllEvents.in', fetcher: () => fetchAllEvents('lorient', 'allevents-lorient') },
       { prefix: 'archive-lorient', name: 'Concerts-Metal.com (archive)', fetcher: () => fetchConcertsMetalArchive('bretagne.concerts-metal.com', 'archive-lorient', 'Concerts-Metal.com (archive)') },
     ],
   },

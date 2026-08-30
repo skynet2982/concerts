@@ -32,7 +32,7 @@ Le site se reconstruit tout seul toutes les heures via GitHub Actions (voir
   sources sont soit spécifiques à une seule salle, soit correctement
   bornées à Midi-Pyrénées / Languedoc-Roussillon.
 
-- **Sources de données pour Toulouse** (neuf, fusionnées et dédupliquées —
+- **Sources de données pour Toulouse** (dix, fusionnées et dédupliquées —
   voir plus bas ; en cas de doublon, la source la plus précisément taguée
   gagne, dans l'ordre de son entrée dans `CITIES` dans `index.js`) :
   1. La catégorie ["Rock" de JDS.fr pour Toulouse](https://www.jds.fr/toulouse/agenda/rock-111_B) —
@@ -79,7 +79,28 @@ Le site se reconstruit tout seul toutes les heures via GitHub Actions (voir
      dédoublonnage par nom de groupe ne peut rien matcher — un même
      concert peut alors apparaître deux fois s'il est aussi couvert par
      une autre source qui, elle, liste les groupes.
-  9. `toulouse.concerts-metal.com`, via [la Wayback Machine](https://web.archive.org/) —
+  9. [AllEvents.in](https://allevents.in/toulouse/metal) — agrégateur
+     international généraliste, suggéré par l'utilisateur après que
+     Bandsintown/Songkick/Spotify/Apple Music se soient tous révélés soit
+     bloqués par un anti-bot, soit limités à une recherche par artiste (voir
+     plus bas). Contrairement à ceux-là, un simple `fetch()` passe sans
+     accroc (son `robots.txt` nomme explicitement `ClaudeBot` avec un
+     `Crawl-delay`, pas un `Disallow`), et chaque fiche embarque un JSON-LD
+     `schema.org/MusicEvent`/`Event` propre. Son propre tag de genre
+     (`category_tag_combined`, une variable JS sur la page) s'est avéré peu
+     fiable — un concert hardcore/death metal à La Mécanique des Fluides
+     était tagué "kids,parties,entertainment" par son organisateur — donc,
+     comme pour JDS/Zénith, le filtre mots-clés s'applique au titre et à la
+     description plutôt qu'à cette étiquette. Les pages de catégorie
+     (`/metal`, `/hardcore`, `/punk`) elles-mêmes ne sont pas vraiment
+     filtrées passé les premiers résultats réels (un vide-grenier et une
+     soirée jazz sont tous deux ressortis sur la liste "metal") : elles ne
+     servent donc qu'à repérer des candidats, la vraie décision de filtrage
+     se faisant sur la fiche détaillée de chacun. Le lien de billetterie
+     réel n'est pas dans le JSON-LD non plus — récupéré depuis une
+     variable JS `clevertap_obj['external_ticket_url']` présente ailleurs
+     sur la page.
+  10. `toulouse.concerts-metal.com`, via [la Wayback Machine](https://web.archive.org/) —
      le site est inatteignable depuis GitHub Actions (voir plus bas), et
      archive.ph a lui-même un captcha anti-bot. web.archive.org n'a ni l'un
      ni l'autre problème, donc cette source lit le dernier instantané déjà
@@ -101,7 +122,7 @@ Le site se reconstruit tout seul toutes les heures via GitHub Actions (voir
      mais s'est avérée avoir abouti quelques heures plus tard — la source
      est passée de 5-6 concerts (vieux instantané de novembre 2025) à 36.
 
-- **Sources de données pour Rennes** (quatre — c'est le même point de départ
+- **Sources de données pour Rennes** (cinq — c'est le même point de départ
   que Toulouse à son lancement, avant les ajouts progressifs de salles
   locales) :
   1. La catégorie ["Rock" de JDS.fr pour Rennes](https://www.jds.fr/rennes/agenda/rock-111_B) —
@@ -113,7 +134,11 @@ Le site se reconstruit tout seul toutes les heures via GitHub Actions (voir
      même source que pour Toulouse, région changée.
   3. [Razibus](https://razibus.net/evenements-a-venir.php?region=Bretagne),
      région Bretagne — voir la description complète plus haut.
-  4. `bretagne.concerts-metal.com`, via la Wayback Machine — même mécanisme
+  4. [AllEvents.in](https://allevents.in/rennes/metal) — même mécanisme que
+     pour Toulouse, voir la description complète plus haut. Capte
+     notamment des soirées associatives (Ty Anna, Plan B, Brasserie
+     Skumenn, Melody Maker) qu'aucune autre source de Rennes ne liste.
+  5. `bretagne.concerts-metal.com`, via la Wayback Machine — même mécanisme
      que pour Toulouse (voir plus haut) ; concerts-metal.com n'a pas de
      sous-domaine dédié à Rennes, `bretagne` est son découpage régional
      (le sous-domaine `toulouse`, lui aussi, couvre en réalité tout
@@ -127,13 +152,16 @@ Le site se reconstruit tout seul toutes les heures via GitHub Actions (voir
     pour Toulouse. Pas grave : ses concerts remontent en grande partie via
     JDS.fr de toute façon.
 
-- **Sources de données pour Lorient** (quatre, mêmes sources que Rennes,
+- **Sources de données pour Lorient** (cinq, mêmes sources que Rennes,
   juste re-filtrées sur la commune de Lorient) :
   1. La catégorie ["Rock" de JDS.fr pour Lorient](https://www.jds.fr/lorient/agenda/rock-111_B) —
      couvre déjà Hydrophone (ex-Le Manège), la SMAC locale.
   2. ConcertAndCo.com Bretagne (même requête que pour Rennes).
   3. Razibus région Bretagne (même requête que pour Rennes).
-  4. `bretagne.concerts-metal.com` via la Wayback Machine (même instantané
+  4. [AllEvents.in](https://allevents.in/lorient/metal) — même mécanisme
+     que pour Toulouse/Rennes. Peu de volume pour l'instant (un concert),
+     mais la page existe bien et reste branchée pour la suite.
+  5. `bretagne.concerts-metal.com` via la Wayback Machine (même instantané
      que pour Rennes).
 
 - **Sources de données pour Montauban** (quatre — cette fois-ci les mêmes
@@ -147,6 +175,13 @@ Le site se reconstruit tout seul toutes les heures via GitHub Actions (voir
   3. Razibus région Midi-Pyrenees (même requête que pour Toulouse).
   4. `toulouse.concerts-metal.com` via la Wayback Machine (même instantané
      que pour Toulouse).
+
+  AllEvents.in n'est délibérément pas branché pour Montauban : le site
+  redirige silencieusement `/montauban/...` vers `/montalba/...`, une ville
+  du Texas sans rapport, plutôt que de renvoyer une 404 — le brancher
+  ramènerait des concerts américains, pas juste zéro résultat (contrairement
+  au cas de La Cabane à Toulouse, ici le slug de ville n'existe simplement
+  pas sur ce site).
 
   Salle évaluée et écartée pour Montauban :
   - **Le Rio Grande** (`rio-grande.fr`), la SMAC locale : aucune donnée
@@ -214,6 +249,30 @@ Le site se reconstruit tout seul toutes les heures via GitHub Actions (voir
     identifié ; Zik Occitanie n'a pas de catégorie metal/rock distincte
     (seulement chanson/jazz-blues/world). Aucun des deux n'apportait
     assez pour justifier l'intégration.
+  - **Bandsintown** : le site (`bandsintown.com`, y compris ses pages de
+    ville comme `/en/c/toulouse-france`) est derrière Cloudflare et renvoie
+    un 403 direct, même famille de blocage que concerts-metal.com. Son API
+    REST officielle (`rest.bandsintown.com`) exige désormais un `app_id`
+    explicitement autorisé par Bandsintown (elle renvoyait autrefois
+    n'importe quelle chaîne, plus aujourd'hui — `AccessDeniedException`
+    sans clé approuvée) ; confirmé via le profil tiers
+    github.com/api-evangelist/bandsintown, dont la doc précise que la seule
+    clé gratuite ("Artist API Key") est liée à un compte "Bandsintown for
+    Artists" et scopée à un seul artiste — pas d'accès ville/région
+    possible même avec une clé. Et cette API reste de toute façon centrée
+    artiste (`/artists/{nom}/events`), pas ville/salle — il faudrait déjà
+    connaître les groupes à l'avance, contrairement aux sources ci-dessus
+    qui découvrent les concerts en parcourant un agenda. Pas de flux
+    RSS/ICS non plus (`/feed`, `/rss`, `/ical`, `/calendar.ics` → 403 ou
+    410).
+  - **Songkick** : le site bloque en 406 (bot-mitigation Fastly) toutes les
+    pages de contenu testées — recherche, pages de metro-area (dont
+    Toulouse), fiches artiste, `/concerts`, `/venues`, et même la page de
+    demande de clé API `/api_key_requests/new` — seule la page d'accueil
+    nue répond en 200. Son API (`api.songkick.com`) exige une `apikey`
+    valide (`Invalid or missing apikey`), et comme la page pour en demander
+    une est elle-même bloquée, il n'y a pas de chemin praticable pour en
+    obtenir une de façon anonyme.
 - **Historique** : chaque run fusionne les concerts récupérés avec
   `dist/history.json` (restauré depuis `gh-pages` avant le build), donc un
   concert reste visible dans l'onglet "Historique" même après sa
@@ -303,5 +362,11 @@ stabiliser sur la combinaison actuelle :
 12. + recherche par groupe — champ de recherche client-side sur
     `search-index.json`, toutes villes confondues.
 13. + correctif sélecteur de ville débordant sur mobile étroit, + bouton
-    calendrier (actuel) — même `search-index.json` que la recherche,
-    étendu à l'historique en plus de l'à-venir.
+    calendrier — même `search-index.json` que la recherche, étendu à
+    l'historique en plus de l'à-venir.
+14. + AllEvents.in sur Toulouse/Rennes/Lorient (actuel) — après évaluation
+    et abandon de Bandsintown, Songkick, Spotify et Apple Music (tous
+    bloqués par de l'anti-bot ou limités à une recherche par artiste plutôt
+    que par ville, voir la liste des sites écartés ci-dessus). Pas branché
+    pour Montauban : le site redirige ce slug de ville vers une ville du
+    Texas sans rapport.
