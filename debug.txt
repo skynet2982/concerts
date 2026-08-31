@@ -1,5 +1,15 @@
-2026-08-31T03:32:13.165Z
-[Rennes] Concerts-Metal.com (archive): Error: HTTP 503 for https://web.archive.org/web/20260824035251id_/https://bretagne.concerts-metal.com/ — body: <html><head><meta charset="UTF-8"><title>Internet Archive: Temporarily Offline</title><style>p{font-size:24px;}img{margin-bottom:2rem;}</style></head>
+2026-08-31T10:30:20.916Z
+[Toulouse] Concerts-Metal.com (archive): Error: HTTP 503 for https://web.archive.org/web/20260831091959id_/https://toulouse.concerts-metal.com/ — body: <html><head><meta charset="UTF-8"><title>Internet Archive: Temporarily Offline</title><style>p{font-size:24px;}img{margin-bottom:2rem;}</style></head>
+<body style="padding:30px 0;">
+<div style="float:left;width:260px;text-align:center;">
+<img xsrc="logo_ia.jpg" src="data:image/jpeg;base64,iVBORw0KGg
+    at fetchText (/home/runner/work/concerts/concerts/index.js:77:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async fetchConcertsMetalArchive (/home/runner/work/concerts/concerts/index.js:527:16)
+    at async Promise.all (index 9)
+    at async /home/runner/work/concerts/concerts/index.js:973:21
+
+[Rennes] Concerts-Metal.com (archive): Error: HTTP 503 for https://web.archive.org/web/20260831092017id_/https://bretagne.concerts-metal.com/ — body: <html><head><meta charset="UTF-8"><title>Internet Archive: Temporarily Offline</title><style>p{font-size:24px;}img{margin-bottom:2rem;}</style></head>
 <body style="padding:30px 0;">
 <div style="float:left;width:260px;text-align:center;">
 <img xsrc="logo_ia.jpg" src="data:image/jpeg;base64,iVBORw0KGg
@@ -9,7 +19,7 @@
     at async Promise.all (index 4)
     at async /home/runner/work/concerts/concerts/index.js:973:21
 
-[Lorient] Concerts-Metal.com (archive): Error: HTTP 503 for https://web.archive.org/web/20260824035251id_/https://bretagne.concerts-metal.com/ — body: <html><head><meta charset="UTF-8"><title>Internet Archive: Temporarily Offline</title><style>p{font-size:24px;}img{margin-bottom:2rem;}</style></head>
+[Lorient] Concerts-Metal.com (archive): Error: HTTP 503 for https://web.archive.org/web/20260831092017id_/https://bretagne.concerts-metal.com/ — body: <html><head><meta charset="UTF-8"><title>Internet Archive: Temporarily Offline</title><style>p{font-size:24px;}img{margin-bottom:2rem;}</style></head>
 <body style="padding:30px 0;">
 <div style="float:left;width:260px;text-align:center;">
 <img xsrc="logo_ia.jpg" src="data:image/jpeg;base64,iVBORw0KGg
@@ -19,7 +29,7 @@
     at async Promise.all (index 4)
     at async /home/runner/work/concerts/concerts/index.js:973:21
 
-[Montauban] Concerts-Metal.com (archive): Error: HTTP 503 for https://web.archive.org/web/20260824035231id_/https://toulouse.concerts-metal.com/ — body: <html><head><meta charset="UTF-8"><title>Internet Archive: Temporarily Offline</title><style>p{font-size:24px;}img{margin-bottom:2rem;}</style></head>
+[Montauban] Concerts-Metal.com (archive): Error: HTTP 503 for https://web.archive.org/web/20260831091959id_/https://toulouse.concerts-metal.com/ — body: <html><head><meta charset="UTF-8"><title>Internet Archive: Temporarily Offline</title><style>p{font-size:24px;}img{margin-bottom:2rem;}</style></head>
 <body style="padding:30px 0;">
 <div style="float:left;width:260px;text-align:center;">
 <img xsrc="logo_ia.jpg" src="data:image/jpeg;base64,iVBORw0KGg
