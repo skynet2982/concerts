@@ -1,4 +1,4 @@
-2026-09-01T17:35:03.696Z
+2026-09-01T20:31:46.236Z
 [Toulouse] Concerts-Metal.com (archive): Error: HTTP 429 for https://web.archive.org/web/20260831091959id_/https://toulouse.concerts-metal.com/ — body: Your request is being blocked because our system has flagged it as suspected abusive bot traffic that is degrading the performance of the Wayback Machine.
 <p>
 We recognize this might be a false positive designation, that you might be a normal human and browser just trying to use our service.  We apo
@@ -25,12 +25,12 @@ We recognize this might be a false positive designation, that you might be a nor
     at async Promise.all (index 4)
     at async /home/runner/work/concerts/concerts/index.js:973:21
 
-[Lorient] Concerts-Metal.com (archive): Error: HTTP 429 for https://web.archive.org/web/20260831092017id_/https://bretagne.concerts-metal.com/ — body: Your request is being blocked because our system has flagged it as suspected abusive bot traffic that is degrading the performance of the Wayback Machine.
-<p>
-We recognize this might be a false positive designation, that you might be a normal human and browser just trying to use our service.  We apo
-    at fetchText (/home/runner/work/concerts/concerts/index.js:77:11)
+[Lorient] Concerts-Metal.com (archive): TimeoutError: The operation was aborted due to timeout
+    at node:internal/deps/undici/undici:15157:13
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async fetchConcertsMetalArchive (/home/runner/work/concerts/concerts/index.js:527:16)
+    at async fetchText (/home/runner/work/concerts/concerts/index.js:71:15)
+    at async fetchJson (/home/runner/work/concerts/concerts/index.js:83:21)
+    at async fetchConcertsMetalArchive (/home/runner/work/concerts/concerts/index.js:524:15)
     at async Promise.all (index 4)
     at async /home/runner/work/concerts/concerts/index.js:973:21
 
