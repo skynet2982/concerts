@@ -1,12 +1,4 @@
-2026-09-03T22:20:20.992Z
-[Toulouse] Zénith Toulouse Métropole: TypeError: fetch failed
-    at node:internal/deps/undici/undici:15157:13
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async fetchText (/home/runner/work/concerts/concerts/index.js:71:15)
-    at async fetchZenith (/home/runner/work/concerts/concerts/index.js:544:16)
-    at async Promise.all (index 6)
-    at async /home/runner/work/concerts/concerts/index.js:973:21
-
+2026-09-04T00:50:07.213Z
 [Toulouse] Concerts-Metal.com (archive): TimeoutError: The operation was aborted due to timeout
     at node:internal/deps/undici/undici:15157:13
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
@@ -16,7 +8,7 @@
     at async Promise.all (index 9)
     at async /home/runner/work/concerts/concerts/index.js:973:21
 
-[Rennes] Concerts-Metal.com (archive): TimeoutError: The operation was aborted due to timeout
+[Lorient] Concerts-Metal.com (archive): TimeoutError: The operation was aborted due to timeout
     at node:internal/deps/undici/undici:15157:13
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
     at async fetchText (/home/runner/work/concerts/concerts/index.js:71:15)
@@ -25,7 +17,7 @@
     at async Promise.all (index 4)
     at async /home/runner/work/concerts/concerts/index.js:973:21
 
-[Montauban] Concerts-Metal.com (archive): TypeError: fetch failed
+[Montauban] Concerts-Metal.com (archive): TimeoutError: The operation was aborted due to timeout
     at node:internal/deps/undici/undici:15157:13
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
     at async fetchText (/home/runner/work/concerts/concerts/index.js:71:15)
