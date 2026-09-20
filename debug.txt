@@ -1,4 +1,4 @@
-2026-09-20T17:56:27.468Z
+2026-09-20T20:20:56.418Z
 [Toulouse] Razibus: TypeError: fetch failed
     at node:internal/deps/undici/undici:15157:13
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
@@ -58,7 +58,7 @@
     at async Promise.all (index 2)
     at async /home/runner/work/concerts/concerts/index.js:973:21
 
-[Montauban] Concerts-Metal.com (archive): TimeoutError: The operation was aborted due to timeout
+[Montauban] Concerts-Metal.com (archive): TypeError: fetch failed
     at node:internal/deps/undici/undici:15157:13
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
     at async fetchText (/home/runner/work/concerts/concerts/index.js:71:15)
