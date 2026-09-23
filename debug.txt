@@ -1,4 +1,4 @@
-2026-09-23T18:49:39.788Z
+2026-09-23T22:02:47.847Z
 [Toulouse] Razibus: TypeError: fetch failed
     at node:internal/deps/undici/undici:15157:13
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
@@ -7,13 +7,20 @@
     at async Promise.all (index 7)
     at async /home/runner/work/concerts/concerts/index.js:973:21
 
-[Toulouse] Concerts-Metal.com (archive): TimeoutError: The operation was aborted due to timeout
+[Toulouse] Zénith Toulouse Métropole: TypeError: fetch failed
     at node:internal/deps/undici/undici:15157:13
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
     at async fetchText (/home/runner/work/concerts/concerts/index.js:71:15)
-    at async fetchJson (/home/runner/work/concerts/concerts/index.js:83:21)
-    at async fetchConcertsMetalArchive (/home/runner/work/concerts/concerts/index.js:524:15)
-    at async Promise.all (index 9)
+    at async fetchZenith (/home/runner/work/concerts/concerts/index.js:544:16)
+    at async Promise.all (index 6)
+    at async /home/runner/work/concerts/concerts/index.js:973:21
+
+[Toulouse] JDS.fr: TimeoutError: The operation was aborted due to timeout
+    at node:internal/deps/undici/undici:15157:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async fetchText (/home/runner/work/concerts/concerts/index.js:71:15)
+    at async fetchJdsRock (/home/runner/work/concerts/concerts/index.js:211:18)
+    at async Promise.all (index 0)
     at async /home/runner/work/concerts/concerts/index.js:973:21
 
 [Rennes] Razibus: TypeError: fetch failed
@@ -24,6 +31,14 @@
     at async Promise.all (index 2)
     at async /home/runner/work/concerts/concerts/index.js:973:21
 
+[Rennes] JDS.fr: TimeoutError: The operation was aborted due to timeout
+    at node:internal/deps/undici/undici:15157:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async fetchText (/home/runner/work/concerts/concerts/index.js:71:15)
+    at async fetchJdsRock (/home/runner/work/concerts/concerts/index.js:211:18)
+    at async Promise.all (index 0)
+    at async /home/runner/work/concerts/concerts/index.js:973:21
+
 [Lorient] Razibus: TypeError: fetch failed
     at node:internal/deps/undici/undici:15157:13
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
@@ -32,13 +47,15 @@
     at async Promise.all (index 2)
     at async /home/runner/work/concerts/concerts/index.js:973:21
 
-[Lorient] Concerts-Metal.com (archive): TimeoutError: The operation was aborted due to timeout
+[Lorient] JDS.fr: TimeoutError: The operation was aborted due to timeout
     at node:internal/deps/undici/undici:15157:13
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at runNextTicks (node:internal/process/task_queues:68:3)
+    at listOnTimeout (node:internal/timers:547:9)
+    at process.processTimers (node:internal/timers:521:7)
     at async fetchText (/home/runner/work/concerts/concerts/index.js:71:15)
-    at async fetchJson (/home/runner/work/concerts/concerts/index.js:83:21)
-    at async fetchConcertsMetalArchive (/home/runner/work/concerts/concerts/index.js:524:15)
-    at async Promise.all (index 4)
+    at async fetchJdsRock (/home/runner/work/concerts/concerts/index.js:211:18)
+    at async Promise.all (index 0)
     at async /home/runner/work/concerts/concerts/index.js:973:21
 
 [Montauban] Razibus: TypeError: fetch failed
@@ -49,10 +66,22 @@
     at async Promise.all (index 2)
     at async /home/runner/work/concerts/concerts/index.js:973:21
 
+[Montauban] JDS.fr: TimeoutError: The operation was aborted due to timeout
+    at node:internal/deps/undici/undici:15157:13
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at runNextTicks (node:internal/process/task_queues:68:3)
+    at listOnTimeout (node:internal/timers:547:9)
+    at process.processTimers (node:internal/timers:521:7)
+    at async fetchText (/home/runner/work/concerts/concerts/index.js:71:15)
+    at async fetchJdsRock (/home/runner/work/concerts/concerts/index.js:211:18)
+    at async Promise.all (index 0)
+    at async /home/runner/work/concerts/concerts/index.js:973:21
+
 [Montauban] Concerts-Metal.com (archive): TimeoutError: The operation was aborted due to timeout
     at node:internal/deps/undici/undici:15157:13
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
     at async fetchText (/home/runner/work/concerts/concerts/index.js:71:15)
-    at async fetchConcertsMetalArchive (/home/runner/work/concerts/concerts/index.js:527:16)
+    at async fetchJson (/home/runner/work/concerts/concerts/index.js:83:21)
+    at async fetchConcertsMetalArchive (/home/runner/work/concerts/concerts/index.js:524:15)
     at async Promise.all (index 3)
     at async /home/runner/work/concerts/concerts/index.js:973:21
