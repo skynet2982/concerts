@@ -1,4 +1,4 @@
-2026-10-07T22:41:05.989Z
+2026-10-08T02:29:59.306Z
 [Toulouse] Noiser: Error: HTTP 404 for https://www.noiser.fr/programmation — body: <!doctype html><html lang="fr"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><link id="favicon" rel="icon" href="/favicon-noiser.png"/><link href="https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.css" rel="stylesheet"/><title>noiser.fr</title><
     at fetchText (/home/runner/work/concerts/concerts/index.js:77:11)
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
@@ -15,7 +15,7 @@
     at async Promise.all (index 9)
     at async /home/runner/work/concerts/concerts/index.js:973:21
 
-[Lorient] Concerts-Metal.com (archive): TimeoutError: The operation was aborted due to timeout
+[Rennes] Concerts-Metal.com (archive): TimeoutError: The operation was aborted due to timeout
     at node:internal/deps/undici/undici:15270:13
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
     at async fetchText (/home/runner/work/concerts/concerts/index.js:71:15)
