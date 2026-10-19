@@ -1,4 +1,4 @@
-2026-10-19T12:04:50.985Z
+2026-10-19T18:59:22.157Z
 [Toulouse] Noiser: Error: HTTP 404 for https://www.noiser.fr/programmation — body: <!doctype html><html lang="fr"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><link id="favicon" rel="icon" href="/favicon-noiser.png"/><link href="https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.css" rel="stylesheet"/><title>noiser.fr</title><
     at fetchText (/home/runner/work/concerts/concerts/index.js:77:11)
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
